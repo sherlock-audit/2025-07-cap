@@ -1,0 +1,24 @@
+{
+    "11155111": {
+        "adapter": {
+            "network": "0x7DE28046eE237912DD799a596F7Ea4a66f2A8fa3",
+            "networkMiddleware": "0xC0cED3b51222507f5fD16861f90cb3dC4F2C41B5",
+            "slashDuration": 3000
+        },
+        "implems": {
+            "network": "0xB95E2C9d43EB886EDAb0441A6BFf2b59D7e89e5D",
+            "networkMiddleware": "0xcaadd1b8dD14b1581cB3D3172359C643FaCD82D9"
+        }
+    },
+    "17000": {
+        "adapter": {
+            "feeAllowed": 1000,
+            "network": "0x008CDb66a44A3c8E0077061337ae2964FDdd313E",
+            "networkMiddleware": "0xBC17ceAEDC9d789cC6C43fED13E321ddD28AD9ad"
+        },
+        "implems": {
+            "network": "0x290be688CC5CC060e48610Be10A43d92401E521f",
+            "networkMiddleware": "0x7f557D9945449F4221caF8C13fFc231E2B0F2892"
+        }
+    }
+}
