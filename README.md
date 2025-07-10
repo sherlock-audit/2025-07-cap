@@ -51,7 +51,7 @@ There is an edge case where the added debt tokens of all parties are greater tha
 ___
 
 ### Q: Please provide links to previous audits (if any) and all the known issues or acceptable risks.
-We have several audits but they are not publicly available, how would we handle this? 
+- [Security Cartel](https://sherlock-files.ams3.digitaloceanspaces.com/contest-qa/cap-audit-sec-cal-12.pdf)
 ___
 
 ### Q: Please list any relevant protocol resources.
@@ -61,6 +61,20 @@ ___
 
 ### Q: Additional audit information.
 A deep look at the symbiotic integration, and the open functions of Mint, Burn, Redeem, Liquidate, Repay, RealizeInterest and RealizeRestakerInterest. 
+Changed severity definitions that will apply to this contest:
+High severity:
+
+Direct loss of protocol TVL without (extensive) limitations of external conditions. The loss of the protocol TVL must exceed >1%. This can include >1% of the individual user cUSD collateral that is uniform at any size of user deposit (min $10 requirement still applies).
+
+That means if the issue leads to loss of yield or fees, then it's not sufficient for High severity.
+
+Medium severity:
+
+Causes a loss of funds but requires certain external conditions or specific states, or a loss is highly constrained. The loss must be relevant to the affected party.
+
+Breaks core contract functionality, rendering the contract useless or leading to loss of funds that's relevant to the affected party.
+
+Any yield or fees losses >0.01% are considered Medium. Hence, if the issue leads to a 50% loss of yield or fees, then it's still Medium severity.
 
 
 # Audit scope
