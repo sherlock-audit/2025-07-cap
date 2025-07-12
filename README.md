@@ -52,6 +52,7 @@ ___
 
 ### Q: Please provide links to previous audits (if any) and all the known issues or acceptable risks.
 - [CAP Security Cartel](https://sherlock-files.ams3.digitaloceanspaces.com/contest-qa/cap-audit-sec-cal-12.pdf)
+- https://docs.cap.app/resources/audits
 ___
 
 ### Q: Please list any relevant protocol resources.
