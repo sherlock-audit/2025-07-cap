@@ -17,6 +17,8 @@ struct ImplementationsConfig {
     address oracle;
     address debtToken;
     address feeAuction;
+    address feeReceiver;
+    address chainlinkPoRAddressList;
 }
 
 struct InfraConfig {
@@ -24,6 +26,7 @@ struct InfraConfig {
     address accessControl;
     address lender;
     address delegation;
+    address chainlinkPoRAddressList;
 }
 
 struct PreMainnetInfraConfig {
@@ -54,6 +57,7 @@ struct VaultConfig {
     address capToken; // also called the vault
     address stakedCapToken;
     address feeAuction;
+    address feeReceiver;
     VaultLzPeriphery lzperiphery;
     address[] assets;
     address[] debtTokens;

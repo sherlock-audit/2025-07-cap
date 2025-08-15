@@ -2,10 +2,14 @@
 pragma solidity ^0.8.28;
 
 /// @title Staked Cap Token Interface
-/// @author kexley, @capLabs
+/// @author kexley, Cap Labs
 /// @notice Interface for the staked cap token that distributes yield accrued from agents borrowing underlying assets
 interface IStakedCap {
-    /// @custom:storage-location erc7201:cap.storage.StakedCap
+    /// @dev Storage for the staked cap token
+    /// @param storedTotal Total amount of the token stored
+    /// @param totalLocked Total amount of the token locked
+    /// @param lastNotify Last notify timestamp
+    /// @param lockDuration Lock duration
     struct StakedCapStorage {
         uint256 storedTotal;
         uint256 totalLocked;
@@ -31,4 +35,16 @@ interface IStakedCap {
     /// @notice Remaining locked profit after a notification
     /// @return locked Amount remaining to be vested
     function lockedProfit() external view returns (uint256 locked);
+
+    /// @notice Last notify timestamp
+    /// @return lastNotify Last notify timestamp
+    function lastNotify() external view returns (uint256 lastNotify);
+
+    /// @notice Lock duration
+    /// @return lockDuration Lock duration
+    function lockDuration() external view returns (uint256 lockDuration);
+
+    /// @notice Total amount of the token locked
+    /// @return totalLocked Total amount of the token locked
+    function totalLocked() external view returns (uint256 totalLocked);
 }

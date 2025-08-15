@@ -128,7 +128,7 @@ contract VaultInvariantsTest is Test, ProxyUtils {
         //[Sequence]
         //        sender=0x8d8C714C6790785D0cD4C75935622498F1A76184 addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=pause(uint256) args=[7675797 [7.675e6]]
         //        sender=0x00000000000000000000000000000000dcD713EE addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=removeAsset(uint256) args=[14837635802857839438797466 [1.483e25]]
-        //        sender=0x00000000000000000000000000000000F6A916fd addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=donateAsset(uint256,uint256) args=[9745, 3022]
+        //        sender=0x000000000000000000000000000000000F6A916fd addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=donateAsset(uint256,uint256) args=[9745, 3022]
         //        sender=0x0000000000000000000000000000000000001C71 addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=pause(uint256) args=[9929]
         //        sender=0x0000000000000000000000000000000000000EA1 addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=addAsset(uint256) args=[76715587 [7.671e7]]
         //        sender=0x3C9425bc7770077e68f6a1477D31a938683C316C addr=[test/vault/Vault.invariants.t.sol:TestVaultHandler]0x212224D2F2d262cd093eE13240ca4873fcCBbA3C calldata=investAll(uint256) args=[15078001 [1.507e7]]
@@ -453,23 +453,6 @@ contract TestVaultHandler is StdUtils, RandomActorUtils, RandomAssetUtils {
         vault.repay(currentAsset, amount);
     }
 
-    function rescueERC20(IERC20 asset, uint256 receiverSeed) external {
-        address currentActor = randomActor(receiverSeed);
-        if (currentActor == address(0)) return;
-        if (address(asset).code.length == 0) {
-            return;
-        }
-        if (_isAssetInVault(address(asset))) return;
-
-        try IERC20(asset).balanceOf(address(vault)) returns (uint256 amount) {
-            if (amount > 0) {
-                vault.rescueERC20(address(asset), currentActor);
-            }
-        } catch {
-            // Do nothing if the asset is not in the vault
-        }
-    }
-
     function pause(uint256 assetSeed) external {
         address currentAsset = randomAsset(getVaultUnpausedAssets(), assetSeed);
         if (currentAsset == address(0)) return;
@@ -503,6 +486,9 @@ contract TestVaultHandler is StdUtils, RandomActorUtils, RandomAssetUtils {
         uint256 mintKinkRatio = bound(mintKinkRatioSeed, 0.0000000000001e27, 0.9999999999999e27);
         uint256 burnKinkRatio = bound(burnKinkRatioSeed, 0.0000000000001e27, 0.9999999999999e27);
         uint256 optimalRatio = bound(optimalRatioSeed, 0.0000000000001e27, 0.9999999999999e27);
+
+        // Ensure optimalRatio is not equal to mintKinkRatio or burnKinkRatio
+        if (optimalRatio == mintKinkRatio || optimalRatio == burnKinkRatio) optimalRatio += 1;
 
         vault.setFeeData(
             currentAsset,

@@ -8,18 +8,12 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /// @title Fractional Reserve Logic
-/// @author kexley, @capLabs
+/// @author kexley, Cap Labs
 /// @notice Idle capital is put to work in fractional reserve vaults and can be recalled when
 /// withdrawing, redeeming or borrowing.
 library FractionalReserveLogic {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    /// @dev Loss not allowed from fractional reserve
-    error LossFromFractionalReserve(address asset, address vault, uint256 loss);
-
-    /// @dev Fractional reserve vault already set
-    error FractionalReserveVaultAlreadySet(address vault);
 
     /// @dev Fractional reserve invested event
     event FractionalReserveInvested(address indexed asset, uint256 amount);
@@ -35,6 +29,12 @@ library FractionalReserveLogic {
 
     /// @dev Fractional reserve interest realized event
     event FractionalReserveInterestRealized(address indexed asset);
+
+    /// @dev Full divest required
+    error FullDivestRequired(address asset, uint256 loss);
+
+    /// @dev Fractional reserve vault already set
+    error FractionalReserveVaultAlreadySet(address vault);
 
     /// @notice Invest unborrowed capital in a fractional reserve vault
     /// @param $ Storage pointer
@@ -67,7 +67,7 @@ library FractionalReserveLogic {
                 if (redeemedAssets > loanedAssets) {
                     IERC20(_asset).safeTransfer($.interestReceiver, redeemedAssets - loanedAssets);
                 } else if (redeemedAssets < loanedAssets) {
-                    revert LossFromFractionalReserve(_asset, $.vault[_asset], loanedAssets - redeemedAssets);
+                    revert FullDivestRequired(_asset, loanedAssets - redeemedAssets);
                 }
 
                 emit FractionalReserveDivested(_asset, loanedAssets);
@@ -76,6 +76,8 @@ library FractionalReserveLogic {
     }
 
     /// @notice Divest capital from a fractional reserve vault when not enough funds are held in reserve
+    /// @dev Some wei are left over in the ERC4626 after rounding, so a full divest will yield less than expected and could fail
+    /// Re-investing recovers the lost wei, it is not skimmable via realize interest
     /// @param $ Storage pointer
     /// @param _asset Asset address
     /// @param _withdrawAmount Amount to withdraw to fulfil
@@ -88,17 +90,17 @@ library FractionalReserveLogic {
             if (_withdrawAmount > assetBalance) {
                 /// Divest both the withdrawal amount and the buffer reserve for later withdrawals
                 uint256 divestAmount = _withdrawAmount + $.reserve[_asset] - assetBalance;
-                if (divestAmount > $.loaned[_asset]) divestAmount = $.loaned[_asset];
-                if (divestAmount > 0) {
-                    $.loaned[_asset] -= divestAmount;
 
+                uint256 shares = IERC4626($.vault[_asset]).previewWithdraw(divestAmount);
+                uint256 vaultBalance = IERC4626($.vault[_asset]).balanceOf(address(this));
+
+                if (shares > vaultBalance) {
+                    divestAmount = IERC4626($.vault[_asset]).redeem(vaultBalance, address(this), address(this));
+                } else {
                     IERC4626($.vault[_asset]).withdraw(divestAmount, address(this), address(this));
-
-                    if (IERC20(_asset).balanceOf(address(this)) < divestAmount + assetBalance) {
-                        uint256 loss = divestAmount + assetBalance - IERC20(_asset).balanceOf(address(this));
-                        revert LossFromFractionalReserve(_asset, $.vault[_asset], loss);
-                    }
                 }
+
+                $.loaned[_asset] -= divestAmount;
 
                 emit FractionalReserveDivested(_asset, divestAmount);
             }
@@ -137,9 +139,10 @@ library FractionalReserveLogic {
     /// @param $ Storage pointer
     /// @param _asset Asset address
     function realizeInterest(IFractionalReserve.FractionalReserveStorage storage $, address _asset) external {
-        IERC4626($.vault[_asset]).withdraw(claimableInterest($, _asset), $.interestReceiver, address(this));
-
-        emit FractionalReserveInterestRealized(_asset);
+        if ($.vault[_asset] != address(0)) {
+            IERC4626($.vault[_asset]).withdraw(claimableInterest($, _asset), $.interestReceiver, address(this));
+            emit FractionalReserveInterestRealized(_asset);
+        }
     }
 
     /// @notice Interest from a fractional reserve vault
@@ -151,8 +154,13 @@ library FractionalReserveLogic {
         view
         returns (uint256 interest)
     {
+        if ($.vault[_asset] == address(0)) return 0;
+
         uint256 vaultShares = IERC4626($.vault[_asset]).balanceOf(address(this));
-        uint256 vaultAssets = IERC4626($.vault[_asset]).convertToAssets(vaultShares);
-        interest = vaultAssets > $.loaned[_asset] ? vaultAssets - $.loaned[_asset] : 0;
+        uint256 shares = IERC4626($.vault[_asset]).previewWithdraw($.loaned[_asset]);
+        if (vaultShares > shares) {
+            uint256 withdrawableShares = vaultShares - shares;
+            interest = IERC4626($.vault[_asset]).convertToAssets(withdrawableShares);
+        }
     }
 }

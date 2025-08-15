@@ -6,7 +6,7 @@ import { ViewLogic } from "./ViewLogic.sol";
 import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 /// @title Validation Logic
-/// @author kexley, @capLabs
+/// @author kexley, Cap Labs
 /// @notice Validate actions before state is altered
 library ValidationLogic {
     /// @dev Collateral cannot cover new borrow
@@ -18,8 +18,8 @@ library ValidationLogic {
     /// @dev Health factor lower than liquidation threshold
     error HealthFactorLowerThanLiquidationThreshold(uint256 health);
 
-    /// @dev Already initiated
-    error AlreadyInitiated();
+    /// @dev Liquidation window already opened
+    error LiquidationAlreadyOpened();
 
     /// @dev Grace period not over
     error GracePeriodNotOver();
@@ -67,21 +67,14 @@ library ValidationLogic {
         }
     }
 
-    /// @notice Validate the initialization of the liquidation of an agent
+    /// @notice Validate the opening of the liquidation window of an agent
     /// @dev Health of above 1e27 is healthy, below is liquidatable
     /// @param health Health of an agent's position
     /// @param start Last liquidation start time
     /// @param expiry Liquidation duration after which it expires
-    function validateInitiateLiquidation(uint256 health, uint256 start, uint256 expiry) external view {
+    function validateOpenLiquidation(uint256 health, uint256 start, uint256 expiry) external view {
         if (health >= 1e27) revert HealthFactorNotBelowThreshold();
-        if (block.timestamp <= start + expiry) revert AlreadyInitiated();
-    }
-
-    /// @notice Validate the cancellation of the liquidation of an agent
-    /// @dev Health of above 1e27 is healthy, below is liquidatable
-    /// @param health Health of an agent's position
-    function validateCancelLiquidation(uint256 health) external pure {
-        if (health < 1e27) revert HealthFactorLowerThanLiquidationThreshold(health);
+        if (block.timestamp <= start + expiry) revert LiquidationAlreadyOpened();
     }
 
     /// @notice Validate the liquidation of an agent
@@ -132,5 +125,12 @@ library ValidationLogic {
     /// @param _asset Asset to set minimum borrow amount
     function validateSetMinBorrow(ILender.LenderStorage storage $, address _asset) external view {
         if ($.reservesData[_asset].vault == address(0)) revert AssetNotListed();
+    }
+
+    /// @notice Validate the closing of the liquidation window of an agent
+    /// @dev Health of above 1e27 is healthy, below is liquidatable
+    /// @param health Health of an agent's position
+    function validateCloseLiquidation(uint256 health) external pure {
+        if (health < 1e27) revert HealthFactorLowerThanLiquidationThreshold(health);
     }
 }

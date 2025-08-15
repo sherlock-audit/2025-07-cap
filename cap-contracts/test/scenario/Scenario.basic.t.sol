@@ -3,6 +3,7 @@ pragma solidity ^0.8.28;
 
 import { Delegation } from "../../contracts/delegation/Delegation.sol";
 
+import { IFeeReceiver } from "../../contracts/interfaces/IFeeReceiver.sol";
 import { IMinter } from "../../contracts/interfaces/IMinter.sol";
 import { IOracle } from "../../contracts/interfaces/IOracle.sol";
 import { Lender } from "../../contracts/lendingPool/Lender.sol";
@@ -16,13 +17,9 @@ contract ScenarioBasicTest is TestDeployer {
     function setUp() public {
         _deployCapTestEnvironment();
         _initTestVaultLiquidity(usdVault);
-        _initSymbioticVaultsLiquidity(env);
+        _initSymbioticVaultsLiquidity(env, 1);
 
         user_agent = _getRandomAgent();
-
-        vm.startPrank(env.symbiotic.users.vault_admin);
-        _symbioticVaultDelegateToAgent(symbioticWethVault, env.symbiotic.networkAdapter, user_agent, 3e18);
-        vm.stopPrank();
 
         vm.startPrank(env.users.lender_admin);
 
@@ -232,7 +229,7 @@ contract ScenarioBasicTest is TestDeployer {
             console.log("USDT balance of fee auction after buy", usdt_balance_after);
             console.log("cUSD balance of scUSD after buy", cUSD_balance_after);
 
-            scUSD.notify();
+            IFeeReceiver(env.usdVault.feeReceiver).distribute();
 
             console.log("Mev Bot's cUSD balance", cUSD.balanceOf(mev_bot));
             console.log("");
@@ -399,23 +396,29 @@ contract ScenarioBasicTest is TestDeployer {
             console.log("Liquidation threshold of the operator", liquidationThreshold);
             console.log("Health of the operator", health);
             /// Bad actor so we set his liquidation threshold to 1%
-            Delegation(env.infra.delegation).modifyAgent(user_agent, 0, 0.01e27);
+            Delegation(env.infra.delegation).modifyAgent(user_agent, 0, 0.1e27);
             vm.stopPrank();
 
             vm.startPrank(env.testUsers.liquidator);
-            deal(address(usdc), env.testUsers.liquidator, 4000e6);
-            usdc.approve(address(lender), 4000e6);
-            lender.initiateLiquidation(user_agent);
+            lender.openLiquidation(user_agent);
 
             vm.expectRevert();
-            lender.cancelLiquidation(user_agent);
+            lender.closeLiquidation(user_agent);
 
             vm.expectRevert();
-            lender.initiateLiquidation(user_agent);
+            lender.openLiquidation(user_agent);
             _timeTravel(lender.grace() + 1);
-            lender.liquidate(user_agent, address(usdc), 4000e6);
 
-            lender.cancelLiquidation(user_agent);
+            (,, totalDebt,,,) = lender.agent(user_agent);
+            deal(address(usdc), env.testUsers.liquidator, totalDebt);
+            usdc.approve(address(lender), totalDebt);
+
+            lender.liquidate(user_agent, address(usdc), totalDebt);
+
+            (,, totalDebt,,,) = lender.agent(user_agent);
+            console.log("Total debt of the operator after liquidation", totalDebt);
+
+            lender.closeLiquidation(user_agent);
             vm.stopPrank();
 
             (totalDelegation,, totalDebt, ltv, liquidationThreshold, health) = lender.agent(user_agent);

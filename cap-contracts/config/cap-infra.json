@@ -1,26 +1,30 @@
 {
-    "17000": {
+    "1": {
         "implems": {
-            "accessControl": "0x6FC075b619ABEEC86A37f2a347C5147348c2033d",
-            "capToken": "0x976551eD6f311a99CC0b5f3a043C8C1Df5FF0227",
-            "debtToken": "0xF418C7c0D87A3e8771B7e2d3D78167eAbb27e433",
-            "delegation": "0xEB78Fbf924B832a5958b6a3C2393Ce8e003f5e34",
-            "feeAuction": "0x55b68200a65c7b10a200d0Ed0E91eAE329Cf8161",
-            "lender": "0x49e1641FFA904b08DC1787ca464189fd23D33d4a",
-            "oracle": "0xFD768AfbCDb08FaD1E2f916504686eb549d10a06",
-            "stakedCap": "0xC7Fe210404A44Eb9E82cD5FE56A024df9e3eC7E4"
+            "accessControl": "0x6681EB184c876D74eA3ddFaE0eCEE0C9C0f84bc1",
+            "capToken": "0xe35d17850ce59488Ae47ee5d66BAA06ABd100AAA",
+            "debtToken": "0xaF2084df1Ff172b1D39a94680c9b8bd42b55E20C",
+            "delegation": "0x386C93f9f0A8a681c5A3E826063106A2474958ab",
+            "feeAuction": "0x6c0a3cb3797691b5a702155F4FE507fd58b5D023",
+            "feeReceiver": "0xFB39E573b033ECBd8f795369BDaB11F0E210992f",
+            "lender": "0x11742fC74A2F97585DF64EFa1c3F3A02e9bc2cDC",
+            "oracle": "0xbFe4D64E61a3a02C4781a65FA343007de7ea9F14",
+            "stakedCap": "0x42c0e0ef7C2F35de073F4d6f9c0e4483429c3D31",
+            "chainlinkPoRAddressList": "0xc85d36c2a73caca3b4cb9a2640dbb9269f24614a"
         },
         "infra": {
-            "accessControl": "0x0d85A0Feb0f46Cc78a0b94634FB67F6951468870",
-            "delegation": "0x56236E56AEBA216111BC9f8638E33cC6872AF546",
-            "lender": "0x77083D1B1c7abF5f31dDbB2C755E1aF0DE389992",
-            "oracle": "0xE3165810D81173Ac899262451211AAF7e6BE01Fe"
+            "accessControl": "0x7731129a10d51e18cDE607C5C115F26503D2c683",
+            "delegation": "0xF3E3Eae671000612CE3Fd15e1019154C1a4d693F",
+            "lender": "0x15622c3dbbc5614E6DFa9446603c1779647f01FC",
+            "oracle": "0xcD7f45566bc0E7303fB92A93969BB4D3f6e662bb",
+            "harvester": "0xBF664De63168720b57f1c93581512E9580E3E6f8",
+            "chainlinkPoRAddressList": "0x69A22f0fc7b398e637BF830B862C75dd854b2BbF"
         },
         "libs": {
-            "aaveAdapter": "0xE519A2875DC266bf96eB9b7Fa4DE32D9EB5C8623",
-            "capTokenAdapter": "0x0F46E2d7D80966CB819Ce0C5687C91C944dd86A9",
-            "chainlinkAdapter": "0x8d1347316b0dFAD60F144a5F3D841A86cB81De76",
-            "stakedCapAdapter": "0x5B4CB48aF23d6E7C594AC240BD076dAbDdEbC67F"
+            "aaveAdapter": "0xf4DE2D82904D528E8F0fE9c374218aE6B0A86d7e",
+            "capTokenAdapter": "0xAcc9ce4C15A0F6A2bec49C3F81261d60553D2Faf",
+            "chainlinkAdapter": "0xc850409DC3587039e87930008217B6622CC3B2E2",
+            "stakedCapAdapter": "0xdf48Eb321B38bc19E7F5b2CCA8242Cc6B9a6EcD0"
         }
     }
 }

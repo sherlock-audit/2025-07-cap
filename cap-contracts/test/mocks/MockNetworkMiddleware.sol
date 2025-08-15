@@ -1,10 +1,11 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.28;
 
-import { INetworkMiddleware } from "../../contracts/interfaces/INetworkMiddleware.sol";
+import { ISymbioticNetworkMiddleware } from "../../contracts/interfaces/ISymbioticNetworkMiddleware.sol";
+import { Subnetwork } from "@symbioticfi/core/src/contracts/libraries/Subnetwork.sol";
 
-contract MockNetworkMiddleware is INetworkMiddleware {
-    NetworkMiddlewareStorage internal _storage;
+contract MockNetworkMiddleware is ISymbioticNetworkMiddleware {
+    SymbioticNetworkMiddlewareStorage internal _storage;
 
     // Mock control variables
     mapping(address => uint256) public mockCoverage;
@@ -12,14 +13,18 @@ contract MockNetworkMiddleware is INetworkMiddleware {
     mapping(address => mapping(address => uint256)) public mockCollateralByVault;
     mapping(address => mapping(address => uint256)) public mockSlashableCollateralByVault;
 
-    function registerAgent(address _agent, address _vault) external {
-        _storage.agentsToVault[_agent] = _vault;
-        emit AgentRegistered(_agent);
-    }
+    function initialize(
+        address _accessControl,
+        address _network,
+        address _vaultRegistry,
+        address _oracle,
+        uint48 _requiredEpochDuration,
+        uint256 _feeAllowed
+    ) external { }
 
-    function registerVault(address _vault, address _stakerRewarder) external {
+    function registerVault(address _vault, address _stakerRewarder, address _agent) external {
         _storage.vaults[_vault] = Vault({ stakerRewarder: _stakerRewarder, exists: true });
-        emit VaultRegistered(_vault);
+        emit VaultRegistered(_vault, _agent);
     }
 
     function setFeeAllowed(uint256 _feeAllowed) external {
@@ -61,6 +66,15 @@ contract MockNetworkMiddleware is INetworkMiddleware {
         _slashableCollateral = mockSlashableCollateral[_agent];
     }
 
+    function subnetworkIdentifier(address _agent) public pure returns (uint96 id) {
+        bytes32 hash = keccak256(abi.encodePacked(_agent));
+        id = uint96(uint256(hash)); // Takes first 96 bits of hash
+    }
+
+    function subnetwork(address _agent) public view returns (bytes32 id) {
+        id = Subnetwork.subnetwork(_storage.network, subnetworkIdentifier(_agent));
+    }
+
     function vaults(address _agent) external view returns (address vault) {
         return _storage.agentsToVault[_agent];
     }
@@ -91,5 +105,9 @@ contract MockNetworkMiddleware is INetworkMiddleware {
         mockSlashableCollateral[_agent] += _coverage;
         mockCollateralByVault[_agent][_vault] += _coverage;
         mockSlashableCollateralByVault[_agent][_vault] += _coverage;
+    }
+
+    function setNetwork(address _network) external {
+        _storage.network = _network;
     }
 }

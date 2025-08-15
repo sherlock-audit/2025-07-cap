@@ -4,12 +4,16 @@ pragma solidity ^0.8.0;
 struct SymbioticNetworkAdapterImplementationsConfig {
     address network;
     address networkMiddleware;
+    address agentManager;
 }
 
 struct SymbioticNetworkAdapterConfig {
     address network;
     address networkMiddleware;
+    address agentManager;
     uint256 feeAllowed;
+    address vaultFactory;
+    address decreaseHook;
 }
 
 struct SymbioticNetworkRewardsConfig {
@@ -30,6 +34,8 @@ struct SymbioticVaultParams {
     address collateral;
     uint48 vaultEpochDuration;
     uint48 burnerRouterDelay;
+    address agent;
+    address network;
 }
 
 struct SymbioticVaultConfig {

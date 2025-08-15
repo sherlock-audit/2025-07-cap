@@ -1,0 +1,42 @@
+{
+    "cUSD": {
+        "assets": [
+            {
+                "asset": {
+                    "address": "0xA0b86991c6218b36c1d19D4a2e9Eb0cE3606eB48",
+                    "decimals": 6,
+                    "name": "USD Coin",
+                    "symbol": "USDC"
+                }
+            }
+        ],
+        "capOFTLockbox": "0x0000000000000000000000000000000000000000",
+        "capToken": {
+            "address": "0xcCcc62962d17b8914c62D74FfB843d73B2a3cccC",
+            "decimals": 18,
+            "name": "cap USD",
+            "symbol": "cUSD"
+        },
+        "capZapComposer": "0x0000000000000000000000000000000000000000",
+        "debtTokens": [
+            {
+                "debtToken": {
+                    "address": "0xfa8C6D0b95d9191B5A1D51C868Da2BDFd6C04Ff9",
+                    "decimals": 6,
+                    "name": "Debt USD Coin",
+                    "symbol": "debtUSDC"
+                }
+            }
+        ],
+        "feeAuction": "0xa1a20aBdc873CF291c22Ce3C8968EC06277324D0",
+        "feeReceiver": "0x0036c7b9b62c53F47c804a5643F0c09f864beF0b",
+        "stakedCapOFTLockbox": "0x0000000000000000000000000000000000000000",
+        "stakedCapToken": {
+            "address": "0x88887bE419578051FF9F4eb6C858A951921D8888",
+            "decimals": 18,
+            "name": "Staked cap USD",
+            "symbol": "stcUSD"
+        },
+        "stakedCapZapComposer": "0x0000000000000000000000000000000000000000"
+    }
+}

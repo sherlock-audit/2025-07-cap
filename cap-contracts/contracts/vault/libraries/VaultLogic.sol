@@ -8,43 +8,13 @@ import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.s
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /// @title Vault for storing the backing for cTokens
-/// @author kexley, @capLabs
+/// @author kexley, Cap Labs
 /// @notice Tokens are supplied by cToken minters and borrowed by covered agents
 /// @dev Supplies, borrows and utilization rates are tracked. Interest rates should be computed and
 /// charged on the external contracts, only the principle amount is counted on this contract.
 library VaultLogic {
     using SafeERC20 for IERC20;
     using EnumerableSet for EnumerableSet.AddressSet;
-
-    /// @dev Timestamp is past the deadline
-    error PastDeadline();
-
-    /// @dev Amount out is less than required
-    error Slippage(address asset, uint256 amountOut, uint256 minAmountOut);
-
-    /// @dev Amount out is 0
-    error InvalidAmount();
-
-    /// @dev Paused assets cannot be supplied or borrowed
-    error AssetPaused(address asset);
-
-    /// @dev Only whitelisted assets can be supplied or borrowed
-    error AssetNotSupported(address asset);
-
-    /// @dev Asset is already listed
-    error AssetAlreadySupported(address asset);
-
-    /// @dev Asset has supplies
-    error AssetHasSupplies(address asset);
-
-    /// @dev Only non-supported assets can be rescued
-    error AssetNotRescuable(address asset);
-
-    /// @dev Invalid min amounts out as they dont match the number of assets
-    error InvalidMinAmountsOut();
-
-    /// @dev Insufficient reserves
-    error InsufficientReserves(address asset, uint256 balanceBefore, uint256 amount);
 
     /// @dev Cap token minted
     event Mint(
@@ -89,6 +59,39 @@ library VaultLogic {
 
     /// @dev Rescue unsupported ERC20 tokens
     event RescueERC20(address asset, address receiver);
+
+    /// @dev Set the insurance fund
+    event SetInsuranceFund(address insuranceFund);
+
+    /// @dev Timestamp is past the deadline
+    error PastDeadline();
+
+    /// @dev Amount out is less than required
+    error Slippage(address asset, uint256 amountOut, uint256 minAmountOut);
+
+    /// @dev Amount out is 0
+    error InvalidAmount();
+
+    /// @dev Paused assets cannot be supplied or borrowed
+    error AssetPaused(address asset);
+
+    /// @dev Only whitelisted assets can be supplied or borrowed
+    error AssetNotSupported(address asset);
+
+    /// @dev Asset is already listed
+    error AssetAlreadySupported(address asset);
+
+    /// @dev Asset has supplies
+    error AssetHasSupplies(address asset);
+
+    /// @dev Only non-supported assets can be rescued
+    error AssetNotRescuable(address asset);
+
+    /// @dev Invalid min amounts out as they dont match the number of assets
+    error InvalidMinAmountsOut();
+
+    /// @dev Insufficient reserves
+    error InsufficientReserves(address asset, uint256 balanceBefore, uint256 amount);
 
     /// @dev Modifier to only allow supplies and borrows when not paused
     /// @param $ Vault storage pointer
@@ -239,6 +242,14 @@ library VaultLogic {
         emit UnpauseAsset(_asset);
     }
 
+    /// @notice Set the insurance fund
+    /// @param $ Vault storage pointer
+    /// @param _insuranceFund Insurance fund address
+    function setInsuranceFund(IVault.VaultStorage storage $, address _insuranceFund) external {
+        $.insuranceFund = _insuranceFund;
+        emit SetInsuranceFund(_insuranceFund);
+    }
+
     /// @notice Rescue an unsupported asset
     /// @param $ Vault storage pointer
     /// @param reserve Fractional reserve storage pointer
@@ -285,7 +296,7 @@ library VaultLogic {
         index = $.utilizationIndex[_asset] + (utilization($, _asset) * (block.timestamp - $.lastUpdate[_asset]));
     }
 
-    /// @notice Validate that an asset is listed
+    /// @dev Validate that an asset is listed
     /// @param $ Vault storage pointer
     /// @param _asset Asset to check
     /// @return isListed Asset is listed or not
@@ -293,7 +304,7 @@ library VaultLogic {
         isListed = $.assets.contains(_asset);
     }
 
-    /// @notice Verify that an asset has enough balance
+    /// @dev Verify that an asset has enough balance
     /// @param $ Vault storage pointer
     /// @param _asset Asset address
     /// @param _amount Amount to verify

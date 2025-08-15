@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import { AccessControl } from "../../../../access/AccessControl.sol";
 
-import { Network } from "../../../../delegation/providers/symbiotic/Network.sol";
-import { NetworkMiddleware } from "../../../../delegation/providers/symbiotic/NetworkMiddleware.sol";
+import { SymbioticNetwork } from "../../../../delegation/providers/symbiotic/SymbioticNetwork.sol";
+import { SymbioticNetworkMiddleware } from "../../../../delegation/providers/symbiotic/SymbioticNetworkMiddleware.sol";
 import { InfraConfig, UsersConfig } from "../../../interfaces/DeployConfigs.sol";
 import {
     SymbioticNetworkAdapterConfig,
@@ -20,9 +20,11 @@ import { TestUsersConfig } from "../../../../../test/deploy/interfaces/TestDeplo
 import { IBurnerRouter } from "@symbioticfi/burners/src/interfaces/router/IBurnerRouter.sol";
 
 import { SymbioticAddressbook } from "../../../utils/SymbioticUtils.sol";
+
 import { INetworkRegistry } from "@symbioticfi/core/src/interfaces/INetworkRegistry.sol";
 import { IOperatorRegistry } from "@symbioticfi/core/src/interfaces/IOperatorRegistry.sol";
-import { INetworkRestakeDelegator } from "@symbioticfi/core/src/interfaces/delegator/INetworkRestakeDelegator.sol";
+import { IOperatorNetworkSpecificDelegator } from
+    "@symbioticfi/core/src/interfaces/delegator/IOperatorNetworkSpecificDelegator.sol";
 import { INetworkMiddlewareService } from "@symbioticfi/core/src/interfaces/service/INetworkMiddlewareService.sol";
 import { IOptInService } from "@symbioticfi/core/src/interfaces/service/IOptInService.sol";
 import { IDefaultStakerRewards } from
@@ -30,7 +32,6 @@ import { IDefaultStakerRewards } from
 import { IDefaultStakerRewardsFactory } from
     "@symbioticfi/rewards/src/interfaces/defaultStakerRewards/IDefaultStakerRewardsFactory.sol";
 import { console } from "forge-std/console.sol";
-
 
 contract ConfigureSymbioticOptIns {
     /// OPT-INS
@@ -60,27 +61,6 @@ contract ConfigureSymbioticOptIns {
         SymbioticVaultConfig memory vault,
         address agent
     ) internal {
-        Network(networkAdapter.network).registerVault(vault.vault, agent);
-    }
-
-    // 4. Vault to Agent Delegation
-    // > Vaults can opt into networks by setting non-zero limits.
-    // > https://docs.symbiotic.fi/modules/registries/#vault-allocation-to-networks
-    // Since CAP want agent isolation we have a subnetwork per agent
-    // this means that setting the network limit is the same as setting the agent delegation
-    function _symbioticVaultDelegateToAgent(
-        SymbioticVaultConfig memory vault,
-        SymbioticNetworkAdapterConfig memory networkAdapter,
-        address agent,
-        uint256 amount
-    ) internal {
-        INetworkRestakeDelegator delegator = INetworkRestakeDelegator(vault.delegator);
-        NetworkMiddleware middleware = NetworkMiddleware(networkAdapter.networkMiddleware);
-        bytes32 subnetwork = middleware.subnetwork(agent);
-
-        delegator.setNetworkLimit(subnetwork, amount);
-        if (delegator.operatorNetworkShares(subnetwork, agent) != 1e18) {
-            delegator.setOperatorNetworkShares(subnetwork, agent, 1e18);
-        }
+        SymbioticNetwork(networkAdapter.network).registerVault(vault.vault, agent);
     }
 }

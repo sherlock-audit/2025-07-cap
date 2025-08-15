@@ -7,12 +7,9 @@ import { ILender } from "../../interfaces/ILender.sol";
 import { ValidationLogic } from "./ValidationLogic.sol";
 
 /// @title Reserve Logic
-/// @author kexley, @capLabs
+/// @author kexley, Cap Labs
 /// @notice Add, remove or pause reserves on the Lender
 library ReserveLogic {
-    /// @dev No more reserves allowed
-    error NoMoreReservesAllowed();
-
     /// @dev Reserve added event
     event ReserveAssetAdded(
         address indexed asset, address vault, address debtToken, address interestReceiver, uint256 id
@@ -26,6 +23,12 @@ library ReserveLogic {
 
     /// @dev Reserve asset pause state updated event
     event ReserveAssetPauseStateUpdated(address indexed asset, bool paused);
+
+    /// @dev Interest receiver updated event
+    event ReserveInterestReceiverUpdated(address indexed asset, address interestReceiver);
+
+    /// @dev No more reserves allowed
+    error NoMoreReservesAllowed();
 
     /// @notice Add asset to the lender
     /// @param $ Lender storage
@@ -65,6 +68,16 @@ library ReserveLogic {
         reserve.minBorrow = params.minBorrow;
 
         emit ReserveAssetAdded(params.asset, params.vault, params.debtToken, params.interestReceiver, id);
+    }
+
+    /// @notice Set the interest receiver for an asset
+    /// @param $ Lender storage
+    /// @param _asset Asset address
+    /// @param _interestReceiver Interest receiver address
+    function setInterestReceiver(ILender.LenderStorage storage $, address _asset, address _interestReceiver) external {
+        $.reservesData[_asset].interestReceiver = _interestReceiver;
+
+        emit ReserveInterestReceiverUpdated(_asset, _interestReceiver);
     }
 
     /// @notice Set the minimum borrow amount for an asset

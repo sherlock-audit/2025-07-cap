@@ -33,18 +33,21 @@ struct SymbioticRegistries {
 }
 
 struct SymbioticServices {
-    address networkMetadataService;
     address networkMiddlewareService;
-    address operatorMetadataService;
     address vaultOptInService;
     address networkOptInService;
     address vaultConfigurator;
+}
+
+struct SymbioticHooks {
+    address operatorSpecificDecreaseHook;
 }
 
 struct SymbioticAddressbook {
     SymbioticFactories factories;
     SymbioticRegistries registries;
     SymbioticServices services;
+    SymbioticHooks hooks;
 }
 
 struct VaultAddressbook {
@@ -85,12 +88,8 @@ contract SymbioticUtils {
         ab.registries.operatorRegistry =
             configJson.readAddress(string.concat(selectorPrefix, ".registries.operatorRegistry"));
 
-        ab.services.networkMetadataService =
-            configJson.readAddress(string.concat(selectorPrefix, ".services.networkMetadataService"));
         ab.services.networkMiddlewareService =
             configJson.readAddress(string.concat(selectorPrefix, ".services.networkMiddlewareService"));
-        ab.services.operatorMetadataService =
-            configJson.readAddress(string.concat(selectorPrefix, ".services.operatorMetadataService"));
         ab.services.vaultOptInService =
             configJson.readAddress(string.concat(selectorPrefix, ".services.vaultOptInService"));
         ab.services.networkOptInService =

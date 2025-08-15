@@ -15,7 +15,7 @@ import {
 import { IERC20, IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @title Staked Cap Token
-/// @author kexley, @capLabs
+/// @author kexley, Cap Labs
 /// @notice Slow releasing yield-bearing token that distributes the yield accrued from agents
 /// borrowing from the underlying assets.
 /// @dev Calling notify permissionlessly will start the linear unlock
@@ -27,18 +27,15 @@ contract StakedCap is
     Access,
     StakedCapStorageUtils
 {
-    /// @dev Disable initializers on the implementation
+    /// @custom:oz-upgrades-unsafe-allow constructor
     constructor() {
         _disableInitializers();
     }
 
-    /// @notice Initialize the staked cap token by matching the name and symbol of the underlying
-    /// @param _accessControl Address of the access control
-    /// @param _asset Address of the cap token
-    /// @param _lockDuration Duration in seconds for profit locking
+    /// @inheritdoc IStakedCap
     function initialize(address _accessControl, address _asset, uint256 _lockDuration) external initializer {
-        string memory _name = string.concat("s", IERC20Metadata(_asset).name());
-        string memory _symbol = string.concat("s", IERC20Metadata(_asset).symbol());
+        string memory _name = string.concat("Staked ", IERC20Metadata(_asset).name());
+        string memory _symbol = string.concat("st", IERC20Metadata(_asset).symbol());
 
         __ERC4626_init(IERC20(_asset));
         __ERC20_init(_name, _symbol);
@@ -48,13 +45,7 @@ contract StakedCap is
         getStakedCapStorage().lockDuration = _lockDuration;
     }
 
-    /// @notice Override the decimals function to match underlying decimals
-    /// @return _decimals Decimals of the staked cap token
-    function decimals() public view override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8 _decimals) {
-        _decimals = ERC4626Upgradeable.decimals();
-    }
-
-    /// @notice Notify the yield to start vesting
+    /// @inheritdoc IStakedCap
     function notify() external {
         StakedCapStorage storage $ = getStakedCapStorage();
         if ($.lastNotify + $.lockDuration > block.timestamp) revert StillVesting();
@@ -71,8 +62,27 @@ contract StakedCap is
         }
     }
 
-    /// @notice Remaining locked profit after a notification
-    /// @return locked Amount remaining to be vested
+    /// @inheritdoc ERC4626Upgradeable
+    function decimals() public view override(ERC20Upgradeable, ERC4626Upgradeable) returns (uint8 _decimals) {
+        _decimals = ERC4626Upgradeable.decimals();
+    }
+
+    /// @inheritdoc IStakedCap
+    function lastNotify() external view returns (uint256 _lastNotify) {
+        _lastNotify = getStakedCapStorage().lastNotify;
+    }
+
+    /// @inheritdoc IStakedCap
+    function totalLocked() external view returns (uint256 _totalLocked) {
+        _totalLocked = getStakedCapStorage().totalLocked;
+    }
+
+    /// @inheritdoc IStakedCap
+    function lockDuration() external view returns (uint256 _lockDuration) {
+        _lockDuration = getStakedCapStorage().lockDuration;
+    }
+
+    /// @inheritdoc IStakedCap
     function lockedProfit() public view returns (uint256 locked) {
         StakedCapStorage storage $ = getStakedCapStorage();
         if ($.lockDuration == 0) return 0;
@@ -81,8 +91,7 @@ contract StakedCap is
         locked = $.totalLocked * remaining / $.lockDuration;
     }
 
-    /// @notice Total vested cap tokens on this contract
-    /// @return total Total amount of vested cap tokens
+    /// @inheritdoc ERC4626Upgradeable
     function totalAssets() public view override returns (uint256 total) {
         total = getStakedCapStorage().storedTotal - lockedProfit();
     }
@@ -111,6 +120,6 @@ contract StakedCap is
         getStakedCapStorage().storedTotal -= _assets;
     }
 
-    /// @dev Only admin can upgrade implementation
+    /// @inheritdoc UUPSUpgradeable
     function _authorizeUpgrade(address) internal view override checkAccess(bytes4(0)) { }
 }

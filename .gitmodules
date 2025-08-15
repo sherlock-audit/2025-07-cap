@@ -16,3 +16,6 @@
 [submodule "cap-contracts/lib/layerzero-v1"]
 	path = cap-contracts/lib/layerzero-v1
 	url = https://github.com/LayerZero-Labs/LayerZero-v1
+[submodule "cap-contracts/lib/tokenized-strategy"]
+	path = cap-contracts/lib/tokenized-strategy
+	url = https://github.com/yearn/tokenized-strategy

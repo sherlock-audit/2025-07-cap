@@ -15,6 +15,7 @@ import { DebtToken } from "../../lendingPool/tokens/DebtToken.sol";
 import { FractionalReserve } from "../../vault/FractionalReserve.sol";
 import { Minter } from "../../vault/Minter.sol";
 
+import { FeeReceiver } from "../../feeReceiver/FeeReceiver.sol";
 import { CapToken } from "../../token/CapToken.sol";
 import { OFTLockbox } from "../../token/OFTLockbox.sol";
 import { StakedCap } from "../../token/StakedCap.sol";
@@ -45,17 +46,17 @@ contract DeployVault is ProxyUtils {
         // deploy and init cap instances
         d.capToken = _proxy(implementations.capToken);
         d.stakedCapToken = _proxy(implementations.stakedCap);
-
-        // deploy fee auction for this vault
+        d.feeReceiver = _proxy(implementations.feeReceiver);
         d.feeAuction = _proxy(implementations.feeAuction);
+
+        FeeReceiver(d.feeReceiver).initialize(infra.accessControl, d.capToken, d.stakedCapToken);
         FeeAuction(d.feeAuction).initialize(
             infra.accessControl,
             d.capToken, // payment token is the vault's cap token
-            d.stakedCapToken, // payment recipient is the staked cap token
-            3 hours, // 3 hour auctions
+            d.feeReceiver, // payment recipient is the staked cap token
+            24 hours, // 3 hour auctions
             1e18 // min price of 1 token
         );
-
         CapToken(d.capToken).initialize(
             name, symbol, infra.accessControl, d.feeAuction, infra.oracle, assets, insuranceFund
         );
@@ -139,6 +140,13 @@ contract DeployVault is ProxyUtils {
         accessControl.grantAccess(FeeAuction.setMinStartPrice.selector, vault.feeAuction, users.fee_auction_admin);
         accessControl.grantAccess(FeeAuction.setDuration.selector, vault.feeAuction, users.fee_auction_admin);
         accessControl.grantAccess(FeeAuction.setStartPrice.selector, vault.feeAuction, users.fee_auction_admin);
+
+        accessControl.grantAccess(
+            FeeReceiver.setProtocolFeePercentage.selector, vault.feeReceiver, users.vault_config_admin
+        );
+        accessControl.grantAccess(
+            FeeReceiver.setProtocolFeeReceiver.selector, vault.feeReceiver, users.vault_config_admin
+        );
 
         AccessControl(infra.accessControl).grantAccess(bytes4(0), vault.stakedCapToken, users.access_control_admin);
     }
