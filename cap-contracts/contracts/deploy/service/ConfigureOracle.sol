@@ -2,7 +2,6 @@
 pragma solidity ^0.8.0;
 
 import { IOracle } from "../../interfaces/IOracle.sol";
-import { IOracleTypes } from "../../interfaces/IOracleTypes.sol";
 import { Oracle } from "../../oracle/Oracle.sol";
 
 import { AaveAdapter } from "../../oracle/libraries/AaveAdapter.sol";
@@ -19,7 +18,7 @@ contract ConfigureOracle {
         address asset,
         address priceFeed
     ) internal {
-        IOracleTypes.OracleData memory oracleData = IOracleTypes.OracleData({
+        IOracle.OracleData memory oracleData = IOracle.OracleData({
             adapter: libs.chainlinkAdapter,
             payload: abi.encodeWithSelector(ChainlinkAdapter.price.selector, priceFeed)
         });
@@ -30,7 +29,7 @@ contract ConfigureOracle {
     function _initAaveRateOracle(LibsConfig memory libs, InfraConfig memory infra, address asset, address dataProvider)
         internal
     {
-        IOracleTypes.OracleData memory oracleData = IOracleTypes.OracleData({
+        IOracle.OracleData memory oracleData = IOracle.OracleData({
             adapter: libs.aaveAdapter,
             payload: abi.encodeWithSelector(AaveAdapter.rate.selector, dataProvider, asset)
         });
@@ -44,11 +43,11 @@ contract ConfigureOracle {
     }
 
     function _initVaultOracle(LibsConfig memory libs, InfraConfig memory infra, VaultConfig memory vault) internal {
-        IOracleTypes.OracleData memory cTokenOracleData = IOracleTypes.OracleData({
+        IOracle.OracleData memory cTokenOracleData = IOracle.OracleData({
             adapter: libs.capTokenAdapter,
             payload: abi.encodeWithSelector(CapTokenAdapter.price.selector, vault.capToken)
         });
-        IOracleTypes.OracleData memory stcTokenOracleData = IOracleTypes.OracleData({
+        IOracle.OracleData memory stcTokenOracleData = IOracle.OracleData({
             adapter: libs.stakedCapAdapter,
             payload: abi.encodeWithSelector(StakedCapAdapter.price.selector, vault.stakedCapToken)
         });

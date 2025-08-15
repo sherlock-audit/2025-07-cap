@@ -5,10 +5,12 @@ import { IPriceOracle } from "./IPriceOracle.sol";
 import { IRateOracle } from "./IRateOracle.sol";
 
 /// @title Oracle
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Price and rate oracles are unified
 interface IOracle is IPriceOracle, IRateOracle {
-    /// @notice Initialize the oracle
-    /// @param _accessControl Access control address
-    function initialize(address _accessControl) external;
+    /// @notice Oracle data
+    struct OracleData {
+        address adapter;
+        bytes payload;
+    }
 }

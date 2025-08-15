@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import { ILender } from "../../../interfaces/ILender.sol";
 
 /// @title AgentConfiguration library
-/// @author kexley, Cap Labs
+/// @author kexley
 /// @notice Implements the bitmap logic to handle the agent configuration
 library AgentConfiguration {
     /// @dev Invalid reserve index

@@ -3,7 +3,6 @@ pragma solidity ^0.8.28;
 
 import { Delegation } from "../../contracts/delegation/Delegation.sol";
 
-import { IFeeReceiver } from "../../contracts/interfaces/IFeeReceiver.sol";
 import { IMinter } from "../../contracts/interfaces/IMinter.sol";
 import { IOracle } from "../../contracts/interfaces/IOracle.sol";
 import { Lender } from "../../contracts/lendingPool/Lender.sol";
@@ -233,7 +232,7 @@ contract ScenarioBasicTest is TestDeployer {
             console.log("USDT balance of fee auction after buy", usdt_balance_after);
             console.log("cUSD balance of scUSD after buy", cUSD_balance_after);
 
-            IFeeReceiver(env.usdVault.feeReceiver).distribute();
+            scUSD.notify();
 
             console.log("Mev Bot's cUSD balance", cUSD.balanceOf(mev_bot));
             console.log("");
@@ -406,17 +405,17 @@ contract ScenarioBasicTest is TestDeployer {
             vm.startPrank(env.testUsers.liquidator);
             deal(address(usdc), env.testUsers.liquidator, 4000e6);
             usdc.approve(address(lender), 4000e6);
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
 
             vm.expectRevert();
-            lender.closeLiquidation(user_agent);
+            lender.cancelLiquidation(user_agent);
 
             vm.expectRevert();
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
             _timeTravel(lender.grace() + 1);
             lender.liquidate(user_agent, address(usdc), 4000e6);
 
-            lender.closeLiquidation(user_agent);
+            lender.cancelLiquidation(user_agent);
             vm.stopPrank();
 
             (totalDelegation,, totalDebt, ltv, liquidationThreshold, health) = lender.agent(user_agent);

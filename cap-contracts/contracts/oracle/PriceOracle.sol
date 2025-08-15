@@ -2,42 +2,31 @@
 pragma solidity ^0.8.28;
 
 import { Access } from "../access/Access.sol";
-import { IOracleTypes } from "../interfaces/IOracleTypes.sol";
+import { IOracle } from "../interfaces/IOracle.sol";
 import { IPriceOracle } from "../interfaces/IPriceOracle.sol";
 import { PriceOracleStorageUtils } from "../storage/PriceOracleStorageUtils.sol";
 
-/// @title Price Oracle
-/// @author kexley, Cap Labs
+/// @title Oracle for fetching prices
+/// @author kexley, @capLabs
 /// @dev Payloads are stored on this contract and calculation logic is hosted on external libraries
 abstract contract PriceOracle is IPriceOracle, Access, PriceOracleStorageUtils {
-    /// @inheritdoc IPriceOracle
-    function setPriceOracleData(address _asset, IOracleTypes.OracleData calldata _oracleData)
-        external
-        checkAccess(this.setPriceOracleData.selector)
-    {
-        getPriceOracleStorage().oracleData[_asset] = _oracleData;
-        emit SetPriceOracleData(_asset, _oracleData);
+    /// @dev Initialize the price oracle
+    /// @param _accessControl Access control address
+    function __PriceOracle_init(address _accessControl) internal onlyInitializing {
+        __Access_init(_accessControl);
+        __PriceOracle_init_unchained();
     }
 
-    /// @inheritdoc IPriceOracle
-    function setPriceBackupOracleData(address _asset, IOracleTypes.OracleData calldata _oracleData)
-        external
-        checkAccess(this.setPriceBackupOracleData.selector)
-    {
-        getPriceOracleStorage().backupOracleData[_asset] = _oracleData;
-        emit SetPriceBackupOracleData(_asset, _oracleData);
-    }
+    /// @dev Initialize unchained
+    function __PriceOracle_init_unchained() internal onlyInitializing { }
 
-    /// @inheritdoc IPriceOracle
-    function setStaleness(address _asset, uint256 _staleness) external checkAccess(this.setStaleness.selector) {
-        getPriceOracleStorage().staleness[_asset] = _staleness;
-        emit SetStaleness(_asset, _staleness);
-    }
-
-    /// @inheritdoc IPriceOracle
+    /// @notice Fetch the price for an asset
+    /// @dev If initial price fetch fails then a backup source is used
+    /// @param _asset Asset address
+    /// @return price Price of the asset
     function getPrice(address _asset) external view returns (uint256 price, uint256 lastUpdated) {
         PriceOracleStorage storage $ = getPriceOracleStorage();
-        IOracleTypes.OracleData memory data = $.oracleData[_asset];
+        IOracle.OracleData memory data = $.oracleData[_asset];
 
         (price, lastUpdated) = _getPrice(data.adapter, data.payload);
 
@@ -49,30 +38,56 @@ abstract contract PriceOracle is IPriceOracle, Access, PriceOracleStorageUtils {
         }
     }
 
-    /// @inheritdoc IPriceOracle
-    function priceOracleData(address _asset) external view returns (IOracleTypes.OracleData memory data) {
+    /// @notice View the oracle data for an asset
+    /// @param _asset Asset address
+    /// @return data Oracle data for an asset
+    function priceOracleData(address _asset) external view returns (IOracle.OracleData memory data) {
         data = getPriceOracleStorage().oracleData[_asset];
     }
 
-    /// @inheritdoc IPriceOracle
-    function priceBackupOracleData(address _asset) external view returns (IOracleTypes.OracleData memory data) {
+    /// @notice View the backup oracle data for an asset
+    /// @param _asset Asset address
+    /// @return data Backup oracle data for an asset
+    function priceBackupOracleData(address _asset) external view returns (IOracle.OracleData memory data) {
         data = getPriceOracleStorage().backupOracleData[_asset];
     }
 
-    /// @inheritdoc IPriceOracle
+    /// @notice View the staleness period for asset prices
+    /// @param _asset Asset address
+    /// @return assetStaleness Staleness period in seconds for asset prices
     function staleness(address _asset) external view returns (uint256 assetStaleness) {
         assetStaleness = getPriceOracleStorage().staleness[_asset];
     }
 
-    /// @dev Initialize the price oracle
-    /// @param _accessControl Access control address
-    function __PriceOracle_init(address _accessControl) internal onlyInitializing {
-        __Access_init(_accessControl);
-        __PriceOracle_init_unchained();
+    /// @notice Set a price source for an asset
+    /// @param _asset Asset address
+    /// @param _oracleData Oracle data
+    function setPriceOracleData(address _asset, IOracle.OracleData calldata _oracleData)
+        external
+        checkAccess(this.setPriceOracleData.selector)
+    {
+        getPriceOracleStorage().oracleData[_asset] = _oracleData;
+        emit SetPriceOracleData(_asset, _oracleData);
     }
 
-    /// @dev Initialize unchained is empty
-    function __PriceOracle_init_unchained() internal onlyInitializing { }
+    /// @notice Set a backup price source for an asset
+    /// @param _asset Asset address
+    /// @param _oracleData Oracle data
+    function setPriceBackupOracleData(address _asset, IOracle.OracleData calldata _oracleData)
+        external
+        checkAccess(this.setPriceBackupOracleData.selector)
+    {
+        getPriceOracleStorage().backupOracleData[_asset] = _oracleData;
+        emit SetPriceBackupOracleData(_asset, _oracleData);
+    }
+
+    /// @notice Set the staleness period for asset prices
+    /// @param _asset Asset address
+    /// @param _staleness Staleness period in seconds for asset prices
+    function setStaleness(address _asset, uint256 _staleness) external checkAccess(this.setStaleness.selector) {
+        getPriceOracleStorage().staleness[_asset] = _staleness;
+        emit SetStaleness(_asset, _staleness);
+    }
 
     /// @dev Calculate price using an adapter and payload but do not revert on errors
     /// @param _adapter Adapter for calculation logic

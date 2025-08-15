@@ -3,8 +3,8 @@ pragma solidity ^0.8.0;
 
 import { AccessControl } from "../../../../access/AccessControl.sol";
 
-import { SymbioticNetwork } from "../../../../delegation/providers/symbiotic/SymbioticNetwork.sol";
-import { SymbioticNetworkMiddleware } from "../../../../delegation/providers/symbiotic/SymbioticNetworkMiddleware.sol";
+import { Network } from "../../../../delegation/providers/symbiotic/Network.sol";
+import { NetworkMiddleware } from "../../../../delegation/providers/symbiotic/NetworkMiddleware.sol";
 import { InfraConfig, UsersConfig } from "../../../interfaces/DeployConfigs.sol";
 import {
     SymbioticNetworkAdapterConfig,
@@ -30,6 +30,7 @@ import { IDefaultStakerRewards } from
 import { IDefaultStakerRewardsFactory } from
     "@symbioticfi/rewards/src/interfaces/defaultStakerRewards/IDefaultStakerRewardsFactory.sol";
 import { console } from "forge-std/console.sol";
+
 
 contract ConfigureSymbioticOptIns {
     /// OPT-INS
@@ -59,7 +60,7 @@ contract ConfigureSymbioticOptIns {
         SymbioticVaultConfig memory vault,
         address agent
     ) internal {
-        SymbioticNetwork(networkAdapter.network).registerVault(vault.vault, agent);
+        Network(networkAdapter.network).registerVault(vault.vault, agent);
     }
 
     // 4. Vault to Agent Delegation
@@ -74,7 +75,7 @@ contract ConfigureSymbioticOptIns {
         uint256 amount
     ) internal {
         INetworkRestakeDelegator delegator = INetworkRestakeDelegator(vault.delegator);
-        SymbioticNetworkMiddleware middleware = SymbioticNetworkMiddleware(networkAdapter.networkMiddleware);
+        NetworkMiddleware middleware = NetworkMiddleware(networkAdapter.networkMiddleware);
         bytes32 subnetwork = middleware.subnetwork(agent);
 
         delegator.setNetworkLimit(subnetwork, amount);

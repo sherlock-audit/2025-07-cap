@@ -2,8 +2,7 @@
 pragma solidity ^0.8.0;
 
 import { Delegation } from "../../contracts/delegation/Delegation.sol";
-import { SymbioticNetworkMiddleware } from
-    "../../contracts/delegation/providers/symbiotic/SymbioticNetworkMiddleware.sol";
+import { NetworkMiddleware } from "../../contracts/delegation/providers/symbiotic/NetworkMiddleware.sol";
 import { FeeConfig, VaultConfig } from "../../contracts/deploy/interfaces/DeployConfigs.sol";
 
 import { MockChainlinkPriceFeed } from "../mocks/MockChainlinkPriceFeed.sol";
@@ -317,7 +316,6 @@ contract TestDeployer is
         vm.label(address(env.implems.accessControl), "AccessControlImplem");
         vm.label(address(env.implems.delegation), "DelegationImplem");
         vm.label(address(env.implems.feeAuction), "FeeAuctionImplem");
-        vm.label(address(env.implems.feeReceiver), "FeeReceiverImplem");
         vm.label(address(env.implems.oracle), "OracleImplem");
         vm.label(address(env.implems.lender), "LenderImplem");
         vm.label(address(env.implems.stakedCap), "StakedCapImplem");
@@ -346,11 +344,9 @@ contract TestDeployer is
         vm.label(address(env.usdVault.capToken), "cUSD");
         vm.label(address(env.usdVault.stakedCapToken), "scUSD");
         vm.label(address(env.usdVault.feeAuction), "cUSD_FeeAuction");
-        vm.label(address(env.usdVault.feeReceiver), "cUSD_FeeReceiver");
         vm.label(address(env.ethVault.capToken), "cETH");
         vm.label(address(env.ethVault.stakedCapToken), "scETH");
         vm.label(address(env.ethVault.feeAuction), "cETH_FeeAuction");
-        vm.label(address(env.ethVault.feeReceiver), "cETH_FeeReceiver");
 
         // Label symbiotic contracts
         if (!useMockBackingNetwork()) {
@@ -424,7 +420,7 @@ contract TestDeployer is
     StakedCap scETH;
     FeeAuction cETHFeeAuction;
 
-    SymbioticNetworkMiddleware middleware;
+    NetworkMiddleware middleware;
     SymbioticVaultConfig symbioticWethVault;
     SymbioticNetworkRewardsConfig symbioticWethNetworkRewards;
 
@@ -447,7 +443,7 @@ contract TestDeployer is
         cETHFeeAuction = FeeAuction(ethVault.feeAuction);
 
         if (!useMockBackingNetwork()) {
-            middleware = SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
+            middleware = NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
             symbioticWethVault = _getSymbioticVaultConfig(0);
             symbioticWethNetworkRewards = _getSymbioticNetworkRewardsConfig(0);
         }

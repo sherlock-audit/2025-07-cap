@@ -4,15 +4,10 @@ pragma solidity ^0.8.28;
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /// @title Fractional Reserve Interface
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Interface for the Fractional Reserve contract
 interface IFractionalReserve {
-    /// @dev Storage for the Fractional Reserve contract
-    /// @param interestReceiver Interest receiver address
-    /// @param loaned Loaned amount for each asset
-    /// @param reserve Reserve amount for each asset
-    /// @param vault Fractional reserve vault for each asset
-    /// @param vaults Fractional reserve vaults
+    /// @custom:storage-location erc7201:cap.storage.FractionalReserve
     struct FractionalReserveStorage {
         address interestReceiver;
         mapping(address => uint256) loaned;
@@ -62,13 +57,4 @@ interface IFractionalReserve {
     /// @param _asset Asset address
     /// @return reserveAmount Reserve amount
     function reserve(address _asset) external view returns (uint256 reserveAmount);
-
-    /// @notice Loaned amount for an asset
-    /// @param _asset Asset address
-    /// @return loanedAmount Loaned amount
-    function loaned(address _asset) external view returns (uint256 loanedAmount);
-
-    /// @notice Interest receiver
-    /// @return interestReceiver Interest receiver
-    function interestReceiver() external view returns (address interestReceiver);
 }

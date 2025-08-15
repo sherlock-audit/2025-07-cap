@@ -2,7 +2,6 @@
 pragma solidity ^0.8.28;
 
 import { Delegation } from "../../contracts/delegation/Delegation.sol";
-import { DebtToken } from "../../contracts/lendingPool/tokens/DebtToken.sol";
 
 import { ILender } from "../../contracts/interfaces/ILender.sol";
 import { Lender } from "../../contracts/lendingPool/Lender.sol";
@@ -82,7 +81,7 @@ contract LenderLiquidateTest is TestDeployer {
             ILender.AddAssetParams({
                 asset: address(usdt),
                 vault: address(cUSD),
-                debtToken: address(0),
+                debtToken: env.usdVault.debtTokens[0],
                 interestReceiver: env.usdVault.feeAuction,
                 bonusCap: 0.1e27,
                 minBorrow: 100e6
@@ -123,14 +122,14 @@ contract LenderLiquidateTest is TestDeployer {
         vm.startPrank(env.testUsers.liquidator);
 
         vm.expectRevert();
-        lender.openLiquidation(user_agent);
+        lender.initiateLiquidation(user_agent);
 
         vm.stopPrank();
 
         // Modify the agent to have 0.01 liquidation threshold
         {
             vm.startPrank(env.users.delegation_admin);
-            Delegation(env.infra.delegation).modifyAgent(user_agent, 0, 0.01e8);
+            Delegation(env.infra.delegation).modifyAgent(user_agent, 0, 0.01e27);
             vm.stopPrank();
         }
 
@@ -141,16 +140,17 @@ contract LenderLiquidateTest is TestDeployer {
         {
             vm.startPrank(env.testUsers.liquidator);
 
-            uint256 assetIndex = _getAssetIndex(usdVault, address(usdc));
-            DebtToken debtToken = DebtToken(usdVault.debtTokens[assetIndex]);
+            deal(address(usdc), env.testUsers.liquidator, 3000e6);
 
             // start the first liquidation
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
             uint256 gracePeriod = lender.grace();
 
             console.log("Starting Liquidations");
             console.log("");
             _timeTravel(gracePeriod + 1);
+            // approve repay amount for liquidation
+            usdc.approve(address(lender), 3000e6);
 
             vm.expectRevert();
             lender.maxLiquidatable(address(0), address(usdc));
@@ -173,10 +173,6 @@ contract LenderLiquidateTest is TestDeployer {
             uint256 targetHealth = lender.targetHealth();
             console.log("Target Health", targetHealth);
 
-            deal(address(usdc), env.testUsers.liquidator, 1000e6);
-            // approve repay amount for liquidation
-            usdc.approve(address(lender), type(uint256).max);
-
             lender.liquidate(user_agent, address(usdc), 1000e6);
 
             (,, uint256 totalDebt,,,) = lender.agent(user_agent);
@@ -184,32 +180,22 @@ contract LenderLiquidateTest is TestDeployer {
 
             console.log("Liquidator usdt balance after first liquidation", usdt.balanceOf(env.testUsers.liquidator));
             console.log("Liquidator weth balance after first liquidation", weth.balanceOf(env.testUsers.liquidator));
-            console.log("Liquidator usdc balance after first liquidation", usdc.balanceOf(env.testUsers.liquidator));
-            console.log("User debt tokens after first liquidation", debtToken.balanceOf(user_agent));
             console.log("");
 
             // start the second liquidation
-            deal(address(usdc), env.testUsers.liquidator, 1000e6);
             lender.liquidate(user_agent, address(usdc), 1000e6);
 
             console.log("Liquidator usdt balance after second liquidation", usdt.balanceOf(env.testUsers.liquidator));
             console.log("Liquidator weth balance after second liquidation", weth.balanceOf(env.testUsers.liquidator));
-            console.log("Liquidator usdc balance after second liquidation", usdc.balanceOf(env.testUsers.liquidator));
-            console.log("User debt tokens after second liquidation", debtToken.balanceOf(user_agent));
             console.log("");
             // start the third liquidation
-            deal(address(usdc), env.testUsers.liquidator, debtToken.balanceOf(user_agent));
-            lender.liquidate(user_agent, address(usdc), debtToken.balanceOf(user_agent));
+            lender.liquidate(user_agent, address(usdc), 1000e6);
 
             console.log("Liquidator usdt balance after third liquidation", usdt.balanceOf(env.testUsers.liquidator));
             console.log("Liquidator weth balance after third liquidation", weth.balanceOf(env.testUsers.liquidator));
             console.log("");
             console.log("Liquidator usdc balance after third liquidation", usdc.balanceOf(env.testUsers.liquidator));
-            console.log("User debt tokens after third liquidation", debtToken.balanceOf(user_agent));
             console.log("");
-
-            (uint256 totalDelegation,, uint256 afterTotalDebt,,, uint256 health) = lender.agent(user_agent);
-            console.log("Health after liquidations", health);
 
             assertEq(usdc.balanceOf(env.testUsers.liquidator), 0);
             assertEq(weth.balanceOf(env.testUsers.liquidator), 2.385e18);
@@ -219,15 +205,15 @@ contract LenderLiquidateTest is TestDeployer {
             console.log("");
             assertEq(coverage, 0);
 
-            // (uint256 totalDelegation,, uint256 afterTotalDebt,,,) = lender.agent(user_agent);
+            (uint256 totalDelegation,, uint256 afterTotalDebt,,,) = lender.agent(user_agent);
 
             console.log("Total delegation", totalDelegation);
             console.log("Total debt before liquidation", totalDebt);
             console.log("Total debt", afterTotalDebt);
             assertEq(totalDelegation, 0);
 
-            /// We fully liquidated the debt
-            assertEq(afterTotalDebt, 0);
+            /// We should only have interest let to pay back
+            assertEq(afterTotalDebt, totalDebt - 2000.000001e8);
 
             vm.stopPrank();
         }
@@ -272,7 +258,7 @@ contract LenderLiquidateTest is TestDeployer {
             deal(address(usdc), env.testUsers.liquidator, 3000e6);
 
             // start the first liquidation
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
             uint256 gracePeriod = lender.grace();
             uint256 expiry = lender.expiry();
 
@@ -293,7 +279,7 @@ contract LenderLiquidateTest is TestDeployer {
             vm.expectRevert(ValidationLogic.LiquidationExpired.selector);
             lender.liquidate(user_agent, address(usdc), 1000e6);
 
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
 
             _timeTravel(gracePeriod + 1);
 
@@ -302,8 +288,8 @@ contract LenderLiquidateTest is TestDeployer {
             console.log("Liquidator usdt balance after second liquidation", usdt.balanceOf(env.testUsers.liquidator));
             console.log("Liquidator weth balance after second liquidation", weth.balanceOf(env.testUsers.liquidator));
             console.log("");
-            /*
-            _setAssetOraclePrice(address(weth), 1035e8);
+
+            _setAssetOraclePrice(address(weth), 1032e8);
 
             // start the third liquidation
 
@@ -311,7 +297,7 @@ contract LenderLiquidateTest is TestDeployer {
 
             vm.startPrank(env.testUsers.liquidator);
 
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
             lender.liquidate(user_agent, address(usdc), 1000e6);
 
             console.log("Liquidator usdt balance after third liquidation", usdt.balanceOf(env.testUsers.liquidator));
@@ -337,7 +323,7 @@ contract LenderLiquidateTest is TestDeployer {
             assertGt(health, 1e27);
             //    assertEq(totalDelegation, 0);
             //    assertEq(totalDebt, 0);
-            */
+
             vm.stopPrank();
         }
     }
@@ -373,7 +359,7 @@ contract LenderLiquidateTest is TestDeployer {
             deal(address(usdc), env.testUsers.liquidator, 3200e6);
 
             // start the first liquidation
-            lender.openLiquidation(user_agent);
+            lender.initiateLiquidation(user_agent);
             uint256 gracePeriod = lender.grace();
 
             console.log("Starting Liquidations");

@@ -4,17 +4,10 @@ pragma solidity ^0.8.28;
 import { EnumerableSet } from "@openzeppelin/contracts/utils/structs/EnumerableSet.sol";
 
 /// @title Vault interface for storing the backing for cTokens
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Interface for the Vault contract which handles supplies, borrows and utilization tracking
 interface IVault {
-    /// @dev Storage for the vault
-    /// @param assets List of assets
-    /// @param totalSupplies Total supplies of an asset
-    /// @param totalBorrows Total borrows of an asset
-    /// @param utilizationIndex Utilization index of an asset
-    /// @param lastUpdate Last update time of an asset
-    /// @param paused Pause state of an asset
-    /// @param insuranceFund Insurance fund address
+    /// @custom:storage-location erc7201:cap.storage.Vault
     struct VaultStorage {
         EnumerableSet.AddressSet assets;
         mapping(address => uint256) totalSupplies;
@@ -26,13 +19,6 @@ interface IVault {
     }
 
     /// @dev Parameters for minting or burning
-    /// @param asset Asset to mint or burn
-    /// @param amountIn Amount of asset to use in the minting or burning
-    /// @param amountOut Amount of cap token to mint or burn
-    /// @param minAmountOut Minimum amount to mint or burn
-    /// @param receiver Receiver of the minting or burning
-    /// @param deadline Deadline of the tx
-    /// @param fee Fee paid to the insurance fund
     struct MintBurnParams {
         address asset;
         uint256 amountIn;
@@ -44,12 +30,6 @@ interface IVault {
     }
 
     /// @dev Parameters for redeeming
-    /// @param amountIn Amount of cap token to burn
-    /// @param amountsOut Amounts of assets to withdraw
-    /// @param minAmountsOut Minimum amounts of assets to withdraw
-    /// @param receiver Receiver of the withdrawal
-    /// @param deadline Deadline of the tx
-    /// @param fees Fees paid to the insurance fund
     struct RedeemParams {
         uint256 amountIn;
         uint256[] amountsOut;
@@ -60,9 +40,6 @@ interface IVault {
     }
 
     /// @dev Parameters for borrowing
-    /// @param asset Asset to borrow
-    /// @param amount Amount of asset to borrow
-    /// @param receiver Receiver of the borrow
     struct BorrowParams {
         address asset;
         uint256 amount;
@@ -70,8 +47,6 @@ interface IVault {
     }
 
     /// @dev Parameters for repaying
-    /// @param asset Asset to repay
-    /// @param amount Amount of asset to repay
     struct RepayParams {
         address asset;
         uint256 amount;
@@ -143,10 +118,6 @@ interface IVault {
 
     /// @notice Unpause all protocol operations
     function unpauseProtocol() external;
-
-    /// @notice Set the insurance fund
-    /// @param _insuranceFund Insurance fund address
-    function setInsuranceFund(address _insuranceFund) external;
 
     /// @notice Rescue an unsupported asset
     /// @param _asset Asset to rescue

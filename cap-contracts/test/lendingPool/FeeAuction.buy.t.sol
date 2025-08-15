@@ -47,21 +47,17 @@ contract FeeAuctionBuyTest is TestDeployer {
 
         // ensure the auction price is the minimum start price
         assertEq(cUSDFeeAuction.currentPrice(), 1e18);
-        assertEq(cUSDFeeAuction.paymentToken(), address(cUSD), "Payment token should be cUSD");
-        assertEq(
-            cUSDFeeAuction.paymentRecipient(),
-            address(env.usdVault.feeReceiver),
-            "Payment recipient should be cUSD_FeeReceiver"
-        );
+        assertEq(cUSDFeeAuction.paymentToken(), address(cUSD));
+        assertEq(cUSDFeeAuction.paymentRecipient(), address(scUSD));
         assertEq(cUSDFeeAuction.startPrice(), 1e18);
         assertEq(cUSDFeeAuction.minStartPrice(), 1e18);
-        assertEq(cUSDFeeAuction.duration(), 1 days);
+        assertEq(cUSDFeeAuction.duration(), 3 hours);
 
         _timeTravel(1 hours);
 
         assertEq(
-            cUSDFeeAuction.currentPrice(), cUSDFeeAuction.minStartPrice() * (1e27 - (1 hours * 0.9e27 / 1 days)) / 1e27
-        ); // fee auction is 1 day long
+            cUSDFeeAuction.currentPrice(), cUSDFeeAuction.minStartPrice() * (1e27 - (1 hours * 0.9e27 / 3 hours)) / 1e27
+        ); // fee auction is 3h long
 
         // Save balances before buying
         uint256 usdcInterest = usdc.balanceOf(address(cUSDFeeAuction));

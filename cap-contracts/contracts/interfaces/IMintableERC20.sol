@@ -2,15 +2,10 @@
 pragma solidity ^0.8.28;
 
 /// @title IMintableERC20
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Interface for mintable ERC20
 interface IMintableERC20 {
-    /// @dev Mintable ERC20 storage
-    /// @param name Name of the token
-    /// @param symbol Symbol of the token
-    /// @param decimals Decimals of the token
-    /// @param balances Balances of the token
-    /// @param totalSupply Total supply of the token
+    /// @custom:storage-location erc7201:cap.storage.MintableERC20
     struct MintableERC20Storage {
         string name;
         string symbol;

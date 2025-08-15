@@ -8,16 +8,9 @@ import { AccessStorageUtils } from "../storage/AccessStorageUtils.sol";
 import { Initializable } from "@openzeppelin/contracts-upgradeable/proxy/utils/Initializable.sol";
 
 /// @title Access
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Inheritable access
 abstract contract Access is IAccess, Initializable, AccessStorageUtils {
-    /// @dev Check caller has permissions for a function, revert if call is not allowed
-    /// @param _selector Function selector
-    modifier checkAccess(bytes4 _selector) {
-        _checkAccess(_selector);
-        _;
-    }
-
     /// @dev Initialize the access control address
     /// @param _accessControl Access control address
     function __Access_init(address _accessControl) internal onlyInitializing {
@@ -28,6 +21,13 @@ abstract contract Access is IAccess, Initializable, AccessStorageUtils {
     /// @param _accessControl Access control address
     function __Access_init_unchained(address _accessControl) internal onlyInitializing {
         getAccessStorage().accessControl = _accessControl;
+    }
+
+    /// @dev Check caller has permissions for a function, revert if call is not allowed
+    /// @param _selector Function selector
+    modifier checkAccess(bytes4 _selector) {
+        _checkAccess(_selector);
+        _;
     }
 
     /// @dev Check caller has access to a function, revert overwise

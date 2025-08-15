@@ -1,8 +1,7 @@
 // SPDX-License-Identifier: BUSL-1.1
 pragma solidity ^0.8.0;
 
-import { SymbioticNetworkMiddleware } from
-    "../../contracts/delegation/providers/symbiotic/SymbioticNetworkMiddleware.sol";
+import { NetworkMiddleware } from "../../contracts/delegation/providers/symbiotic/NetworkMiddleware.sol";
 import { SymbioticVaultConfig } from "../../contracts/deploy/interfaces/SymbioticsDeployConfigs.sol";
 import { TestDeployer } from "../../test/deploy/TestDeployer.sol";
 import { MockERC20 } from "../mocks/MockERC20.sol";
@@ -35,7 +34,7 @@ contract SymbioticSlashAssumptionsTest is TestDeployer {
 
         vm.startPrank(env.users.middleware_admin);
 
-        SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).setFeeAllowed(0.09e18);
+        NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).setFeeAllowed(0.09e18);
         vm.stopPrank();
     }
 
@@ -45,8 +44,7 @@ contract SymbioticSlashAssumptionsTest is TestDeployer {
         returns (uint256)
     {
         IBaseDelegator delegator = IBaseDelegator(_vault.delegator);
-        SymbioticNetworkMiddleware networkMiddleware =
-            SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
+        NetworkMiddleware networkMiddleware = NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
         return delegator.stakeAt(networkMiddleware.subnetwork(_agent), _agent, uint48(_timestamp), "");
     }
 
@@ -55,17 +53,15 @@ contract SymbioticSlashAssumptionsTest is TestDeployer {
         address agent = makeAddr("agent");
 
         vm.expectRevert();
-        SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).registerAgent(address(0), agent);
+        NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).registerAgent(address(0), agent);
 
         vm.expectRevert();
-        SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).registerAgent(
+        NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).registerAgent(
             symbioticWethVault.vault, address(0)
         );
 
-        SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).registerAgent(
-            symbioticWethVault.vault, agent
-        );
-        address vault = SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).vaults(agent);
+        NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).registerAgent(symbioticWethVault.vault, agent);
+        address vault = NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware).vaults(agent);
         assertEq(vault, symbioticWethVault.vault);
         vm.stopPrank();
     }
@@ -78,8 +74,7 @@ contract SymbioticSlashAssumptionsTest is TestDeployer {
 
     function test_can_slash_after_restaker_undelegation() public {
         SymbioticVaultConfig memory _vault = symbioticWethVault;
-        SymbioticNetworkMiddleware _middleware =
-            SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
+        NetworkMiddleware _middleware = NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
 
         // we work from the perspective of the network
         address agent1 = env.testUsers.agents[0];
@@ -185,8 +180,7 @@ contract SymbioticSlashAssumptionsTest is TestDeployer {
 
     function test_slashing_decreases_the_operator_total_stake() public {
         SymbioticVaultConfig memory _vault = symbioticWethVault;
-        SymbioticNetworkMiddleware _middleware =
-            SymbioticNetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
+        NetworkMiddleware _middleware = NetworkMiddleware(env.symbiotic.networkAdapter.networkMiddleware);
 
         address agent1 = _getRandomAgent();
         bytes32 agent1_subnetwork = _middleware.subnetwork(agent1);

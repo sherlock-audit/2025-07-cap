@@ -14,7 +14,7 @@ import { ViewLogic } from "./ViewLogic.sol";
 import { AgentConfiguration } from "./configuration/AgentConfiguration.sol";
 
 /// @title BorrowLogic
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Logic for borrowing and repaying assets from the Lender
 /// @dev Interest rates for borrowing are not based on utilization like other lending markets.
 /// Instead the rates are based on a benchmark rate per asset set by an admin or an alternative
@@ -25,23 +25,11 @@ library BorrowLogic {
     using SafeERC20 for IERC20;
     using AgentConfiguration for ILender.AgentConfigurationMap;
 
-    /// @dev Details of a repayment
-    /// @param repaid Amount repaid
-    /// @param vaultRepaid Amount repaid to the vault
-    /// @param restakerRepaid Amount repaid to the restaker
-    /// @param interestRepaid Amount repaid to the interest receiver
-    struct RepaymentDetails {
-        uint256 repaid;
-        uint256 vaultRepaid;
-        uint256 restakerRepaid;
-        uint256 interestRepaid;
-    }
-
     /// @dev An agent has borrowed an asset from the Lender
     event Borrow(address indexed asset, address indexed agent, uint256 amount);
 
     /// @dev An agent, or someone on behalf of an agent, has repaid
-    event Repay(address indexed asset, address indexed agent, RepaymentDetails details);
+    event Repay(address indexed asset, address indexed agent, uint256 repaid);
 
     /// @dev An agent has totally repaid their debt of an asset including all interests
     event TotalRepayment(address indexed agent, address indexed asset);
@@ -57,11 +45,7 @@ library BorrowLogic {
     /// Restaker debt token is updated after so the new principal debt can be used in calculations
     /// @param $ Lender storage
     /// @param params Parameters to borrow an asset
-    /// @return borrowed Actual amount borrowed
-    function borrow(ILender.LenderStorage storage $, ILender.BorrowParams memory params)
-        external
-        returns (uint256 borrowed)
-    {
+    function borrow(ILender.LenderStorage storage $, ILender.BorrowParams memory params) external {
         /// Realize restaker interest before borrowing
         realizeRestakerInterest($, params.agent, params.asset);
 
@@ -78,15 +62,13 @@ library BorrowLogic {
             $.agentConfig[params.agent].setBorrowing(reserve.id, true);
         }
 
-        borrowed = params.amount;
+        IVault(reserve.vault).borrow(params.asset, params.amount, params.receiver);
 
-        IVault(reserve.vault).borrow(params.asset, borrowed, params.receiver);
+        IDebtToken(reserve.debtToken).mint(params.agent, params.amount);
 
-        IDebtToken(reserve.debtToken).mint(params.agent, borrowed);
+        reserve.debt += params.amount;
 
-        reserve.debt += borrowed;
-
-        emit Borrow(params.asset, params.agent, borrowed);
+        emit Borrow(params.asset, params.agent, params.amount);
     }
 
     /// @notice Repay an asset, burning the debt token and/or paying down interest
@@ -117,6 +99,11 @@ library BorrowLogic {
 
         IERC20(params.asset).safeTransferFrom(params.caller, address(this), repaid);
 
+        if (IERC20(reserve.debtToken).balanceOf(params.agent) == 0) {
+            $.agentConfig[params.agent].setBorrowing(reserve.id, false);
+            emit TotalRepayment(params.agent, params.asset);
+        }
+
         uint256 remaining = repaid;
         uint256 interestRepaid;
         uint256 restakerRepaid;
@@ -141,7 +128,6 @@ library BorrowLogic {
             reserve.totalUnrealizedInterest -= restakerRepaid;
             IERC20(params.asset).safeTransfer($.delegation, restakerRepaid);
             IDelegation($.delegation).distributeRewards(params.agent, params.asset);
-            emit RealizeInterest(params.asset, restakerRepaid, $.delegation);
         }
 
         if (vaultRepaid > 0) {
@@ -152,26 +138,11 @@ library BorrowLogic {
 
         if (interestRepaid > 0) {
             IERC20(params.asset).safeTransfer(reserve.interestReceiver, interestRepaid);
-            emit RealizeInterest(params.asset, interestRepaid, reserve.interestReceiver);
         }
 
         IDebtToken(reserve.debtToken).burn(params.agent, repaid);
 
-        if (IERC20(reserve.debtToken).balanceOf(params.agent) == 0) {
-            $.agentConfig[params.agent].setBorrowing(reserve.id, false);
-            emit TotalRepayment(params.agent, params.asset);
-        }
-
-        emit Repay(
-            params.asset,
-            params.agent,
-            RepaymentDetails({
-                repaid: repaid,
-                vaultRepaid: vaultRepaid,
-                restakerRepaid: restakerRepaid,
-                interestRepaid: interestRepaid
-            })
-        );
+        emit Repay(params.asset, params.agent, repaid);
     }
 
     /// @notice Realize the interest before it is repaid by borrowing from the vault

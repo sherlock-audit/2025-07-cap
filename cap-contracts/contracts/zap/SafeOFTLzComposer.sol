@@ -9,7 +9,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 /// @title SafeOFTLzComposer
-/// @author Cap Labs
+/// @author @capLabs
 /// @notice LayerZero composer that sends back the OFT asset to the recipient if the handler fails.
 abstract contract SafeOFTLzComposer is ILayerZeroComposer {
     using SafeERC20 for IERC20;
@@ -18,24 +18,15 @@ abstract contract SafeOFTLzComposer is ILayerZeroComposer {
     address public immutable oApp;
     address public immutable endpoint;
 
-    /// @dev Invalid OApp
     error SafeOFTLzComposer_InvalidOApp();
-
-    /// @dev Invalid endpoint
     error SafeOFTLzComposer_InvalidEndpoint();
-
-    /// @dev Unauthorized
     error SafeOFTLzComposer_Unauthorized();
 
-    /// @dev Initialize the SafeOFTLzComposer
-    /// @param _oApp OApp address
-    /// @param _endpoint LayerZero endpoint
     constructor(address _oApp, address _endpoint) {
         oApp = _oApp;
         endpoint = _endpoint;
     }
 
-    /// @inheritdoc ILayerZeroComposer
     function lzCompose(
         address _oApp,
         bytes32 _guid,
@@ -61,13 +52,8 @@ abstract contract SafeOFTLzComposer is ILayerZeroComposer {
         }
     }
 
-    /// @notice This function is only called by this contract
+    /// @notice function called by lzCompose.
     /// @dev Is external to allow try/catch in lzCompose.
-    /// @param _oApp OApp address
-    /// @param _guid GUID of the message
-    /// @param _message Message to compose
-    /// @param _executor Executor of the message
-    /// @param _extraData Extra data for the message
     function safeLzCompose(
         address _oApp,
         bytes32 _guid,
@@ -79,13 +65,8 @@ abstract contract SafeOFTLzComposer is ILayerZeroComposer {
         _lzCompose(_oApp, _guid, _message, _executor, _extraData);
     }
 
-    /// @notice This function is to be implemented by the child contract
+    /// @notice function to be implemented by the child contract
     /// @dev This function can fail. If it does, the OFT asset will be sent back to the recipient.
-    /// @param _oApp OApp address
-    /// @param _guid GUID of the message
-    /// @param _message Message to compose
-    /// @param _executor Executor of the message
-    /// @param _extraData Extra data for the message
     function _lzCompose(
         address _oApp,
         bytes32 _guid,

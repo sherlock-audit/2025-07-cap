@@ -2,16 +2,17 @@
 pragma solidity ^0.8.28;
 
 /// @title Fee Auction Interface
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Interface for the FeeAuction contract
 interface IFeeAuction {
+    /// @custom:storage-location erc7201:cap.storage.FeeAuction
     /// @dev Storage for the FeeAuction contract
-    /// @param paymentToken Token used to pay for fees in the auction
-    /// @param paymentRecipient Address that receives the payment tokens
-    /// @param startPrice Starting price of the current auction in payment tokens
-    /// @param startTimestamp Timestamp when the current auction started
-    /// @param duration Duration of each auction in seconds
-    /// @param minStartPrice Minimum allowed start price for future auctions
+    /// @dev Token used to pay for fees in the auction
+    /// @dev Address that receives the payment tokens
+    /// @dev Starting price of the current auction in payment tokens
+    /// @dev Timestamp when the current auction started
+    /// @dev Duration of each auction in seconds
+    /// @dev Minimum allowed start price for future auctions
     struct FeeAuctionStorage {
         address paymentToken;
         address paymentRecipient;
@@ -21,55 +22,9 @@ interface IFeeAuction {
         uint256 minStartPrice;
     }
 
-    /// @dev Buy fees
-    event Buy(address buyer, uint256 price, address[] assets, uint256[] balances);
-
-    /// @dev Set duration
-    event SetDuration(uint256 duration);
-
-    /// @dev Set minimum start price
-    event SetMinStartPrice(uint256 minStartPrice);
-
-    /// @dev Set start price
-    event SetStartPrice(uint256 startPrice);
-
-    /// @dev Assets must be non-zero length and have matching lengths
-    error InvalidAssets();
-
-    /// @dev Deadline must be in the future
-    error InvalidDeadline();
-
-    /// @dev Price must be less than maximum price
-    error InvalidPrice();
-
-    /// @dev Receiver must be non-zero address
-    error InvalidReceiver();
-
-    /// @dev Start price must be greater than minimum start price
-    error InvalidStartPrice();
-
-    /// @dev Insufficient balance for asset
-    error InsufficientBalance(address asset, uint256 balance, uint256 minAmount);
-
-    /// @dev Minimum start price must be set
-    error NoMinStartPrice();
-
-    /// @dev Duration must be set
-    error NoDuration();
-
-    /// @notice Initialize the FeeAuction contract
-    /// @param _accessControl Access control address
-    /// @param _paymentToken Payment token address
-    /// @param _paymentRecipient Payment recipient address
-    /// @param _duration Duration of each auction in seconds
-    /// @param _minStartPrice Minimum allowed start price for future auctions
-    function initialize(
-        address _accessControl,
-        address _paymentToken,
-        address _paymentRecipient,
-        uint256 _duration,
-        uint256 _minStartPrice
-    ) external;
+    /// @notice Current price in the payment token, linearly decays toward 0 over time
+    /// @return price Current price
+    function currentPrice() external view returns (uint256 price);
 
     /// @notice Buy fees in exchange for the payment token
     /// @dev Starts new auction where start price is double the settled price of this one
@@ -98,31 +53,38 @@ interface IFeeAuction {
     /// @param _minStartPrice New minimum start price
     function setMinStartPrice(uint256 _minStartPrice) external;
 
-    /// @notice Current price in the payment token, linearly decays toward 0 over time
-    /// @return price Current price
-    function currentPrice() external view returns (uint256 price);
+    /// @dev Buy fees
+    event Buy(address buyer, uint256 price, address[] assets, uint256[] balances);
 
-    /// @notice Payment token
-    /// @return token Payment token
-    function paymentToken() external view returns (address token);
+    /// @dev Set start price
+    event SetStartPrice(uint256 startPrice);
 
-    /// @notice Payment recipient
-    /// @return recipient Payment recipient
-    function paymentRecipient() external view returns (address recipient);
+    /// @dev Set duration
+    event SetDuration(uint256 duration);
 
-    /// @notice Start price
-    /// @return price Start price
-    function startPrice() external view returns (uint256 price);
+    /// @dev Set minimum start price
+    event SetMinStartPrice(uint256 minStartPrice);
 
-    /// @notice Start timestamp
-    /// @return timestamp Start timestamp
-    function startTimestamp() external view returns (uint256 timestamp);
+    /// @dev Duration must be set
+    error NoDuration();
 
-    /// @notice Duration
-    /// @return duration Duration
-    function duration() external view returns (uint256 duration);
+    /// @dev Minimum start price must be set
+    error NoMinStartPrice();
+    /// @dev Start price must be greater than minimum start price
+    error InvalidStartPrice();
 
-    /// @notice Minimum start price
-    /// @return minStartPrice Minimum start price
-    function minStartPrice() external view returns (uint256 minStartPrice);
+    /// @dev Price must be less than maximum price
+    error InvalidPrice();
+
+    /// @dev Assets must be non-zero length and have matching lengths
+    error InvalidAssets();
+
+    /// @dev Receiver must be non-zero address
+    error InvalidReceiver();
+
+    /// @dev Deadline must be in the future
+    error InvalidDeadline();
+
+    /// @dev Insufficient balance for asset
+    error InsufficientBalance(address asset, uint256 balance, uint256 minAmount);
 }
