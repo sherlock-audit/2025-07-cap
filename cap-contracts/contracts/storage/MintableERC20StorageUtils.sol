@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import { IMintableERC20 } from "../interfaces/IMintableERC20.sol";
 
 /// @title Mintable ERC20 Storage Utils
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Storage utilities for mintable ERC20
 abstract contract MintableERC20StorageUtils {
     /// @dev keccak256(abi.encode(uint256(keccak256("cap.storage.MintableERC20")) - 1)) & ~bytes32(uint256(0xff))

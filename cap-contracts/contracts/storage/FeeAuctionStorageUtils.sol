@@ -4,7 +4,7 @@ pragma solidity ^0.8.28;
 import { IFeeAuction } from "../interfaces/IFeeAuction.sol";
 
 /// @title Fee Auction Storage Utils
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Storage utilities for fee auction
 abstract contract FeeAuctionStorageUtils {
     /// @dev keccak256(abi.encode(uint256(keccak256("cap.storage.FeeAuction")) - 1)) & ~bytes32(uint256(0xff))
@@ -13,7 +13,7 @@ abstract contract FeeAuctionStorageUtils {
 
     /// @dev Get fee auction storage
     /// @return $ Storage pointer
-    function getFeeAuctionStorage() internal pure returns (IFeeAuction.FeeAuctionStorage storage $) {
+    function get() internal pure returns (IFeeAuction.FeeAuctionStorage storage $) {
         assembly {
             $.slot := FeeAuctionStorageLocation
         }

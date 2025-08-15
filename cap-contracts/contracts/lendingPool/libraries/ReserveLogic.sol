@@ -7,9 +7,12 @@ import { ILender } from "../../interfaces/ILender.sol";
 import { ValidationLogic } from "./ValidationLogic.sol";
 
 /// @title Reserve Logic
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Add, remove or pause reserves on the Lender
 library ReserveLogic {
+    /// @dev No more reserves allowed
+    error NoMoreReservesAllowed();
+
     /// @dev Reserve added event
     event ReserveAssetAdded(
         address indexed asset, address vault, address debtToken, address interestReceiver, uint256 id
@@ -23,9 +26,6 @@ library ReserveLogic {
 
     /// @dev Reserve asset pause state updated event
     event ReserveAssetPauseStateUpdated(address indexed asset, bool paused);
-
-    /// @dev No more reserves allowed
-    error NoMoreReservesAllowed();
 
     /// @notice Add asset to the lender
     /// @param $ Lender storage

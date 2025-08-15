@@ -8,7 +8,7 @@ import { IERC20 } from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import { IERC20Metadata } from "@openzeppelin/contracts/token/ERC20/extensions/IERC20Metadata.sol";
 
 /// @title Amount Out Logic
-/// @author kexley, Cap Labs
+/// @author kexley, @capLabs
 /// @notice Amount out logic for exchanging underlying assets with cap tokens
 library MinterLogic {
     /// @dev Ray precision
