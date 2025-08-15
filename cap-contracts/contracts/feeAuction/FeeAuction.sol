@@ -94,6 +94,14 @@ contract FeeAuction is IFeeAuction, UUPSUpgradeable, Access, FeeAuctionStorageUt
     }
 
     /// @inheritdoc IFeeAuction
+    function setPaymentToken(address _paymentToken) external checkAccess(this.setPaymentToken.selector) {
+        if (_paymentToken == address(0)) revert InvalidPaymentToken();
+        FeeAuctionStorage storage $ = getFeeAuctionStorage();
+        $.paymentToken = _paymentToken;
+        emit SetPaymentToken(_paymentToken);
+    }
+
+    /// @inheritdoc IFeeAuction
     function currentPrice() public view returns (uint256 price) {
         FeeAuctionStorage storage $ = getFeeAuctionStorage();
         uint256 elapsed = block.timestamp - $.startTimestamp;
@@ -144,6 +152,7 @@ contract FeeAuction is IFeeAuction, UUPSUpgradeable, Access, FeeAuctionStorageUt
         balances = new uint256[](assetsLength);
         for (uint256 i; i < assetsLength; ++i) {
             address asset = _assets[i];
+            if (asset == address(0)) revert InvalidAsset();
             uint256 balance = IERC20(asset).balanceOf(address(this));
             balances[i] = balance;
             if (balance < _minAmounts[i]) revert InsufficientBalance(asset, balance, _minAmounts[i]);
