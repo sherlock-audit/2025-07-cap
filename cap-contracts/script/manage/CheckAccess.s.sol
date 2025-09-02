@@ -13,6 +13,9 @@ import { VaultConfig } from "../../contracts/deploy/interfaces/DeployConfigs.sol
 import { SymbioticNetworkAdapterConfig } from "../../contracts/deploy/interfaces/SymbioticsDeployConfigs.sol";
 import { FeeAuction } from "../../contracts/feeAuction/FeeAuction.sol";
 import { FeeReceiver } from "../../contracts/feeReceiver/FeeReceiver.sol";
+
+import { CapInterestHarvester } from "../../contracts/gelato/CapInterestHarvester.sol";
+import { CapSweeper } from "../../contracts/gelato/CapSweeper.sol";
 import { Lender } from "../../contracts/lendingPool/Lender.sol";
 import { DebtToken } from "../../contracts/lendingPool/tokens/DebtToken.sol";
 import { PriceOracle } from "../../contracts/oracle/PriceOracle.sol";
@@ -50,6 +53,9 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
     AccessControl accessControl;
 
     address[] devEoas = [0xc1ab5a9593E6e1662A9a44F84Df4F31Fc8A76B52];
+    address msig = address(0xb8FC49402dF3ee4f8587268FB89fda4d621a8793);
+    address gelato = address(0xe84E4337c382cC8Ed57c6FB12919270228B6B7A3);
+    address balancerVault = address(0xBA12222222228d8Ba445958a75a0704d566BF2C8);
 
     NamedSelector[] namedSelectors = [
         NamedSelector({ selector: AccessControl.grantAccess.selector, name: "AccessControl.grantAccess" }),
@@ -62,6 +68,7 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
         NamedSelector({ selector: Delegation.registerNetwork.selector, name: "Delegation.registerNetwork" }),
         NamedSelector({ selector: Delegation.setLtvBuffer.selector, name: "Delegation.setLtvBuffer" }),
         NamedSelector({ selector: SymbioticAgentManager.addAgent.selector, name: "AgentManager.addAgent" }),
+        NamedSelector({ selector: SymbioticAgentManager.setRestakerRate.selector, name: "AgentManager.addAgent" }),
         NamedSelector({ selector: SymbioticNetwork.registerVault.selector, name: "Network.registerVault" }),
         NamedSelector({
             selector: SymbioticNetworkMiddleware.registerVault.selector,
@@ -87,6 +94,21 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
             name: "FeeReceiver.setProtocolFeePercentage"
         }),
         NamedSelector({ selector: FeeReceiver.setProtocolFeeReceiver.selector, name: "FeeReceiver.setProtocolFeeReceiver" }),
+        NamedSelector({
+            selector: CapInterestHarvester.harvestInterest.selector,
+            name: "CapInterestHarvester.harvestInterest"
+        }),
+        NamedSelector({
+            selector: CapInterestHarvester.receiveFlashLoan.selector,
+            name: "CapInterestHarvester.receiveFlashLoan"
+        }),
+        NamedSelector({
+            selector: CapInterestHarvester.setExcessReceiver.selector,
+            name: "CapInterestHarvester.setExcessReceiver"
+        }),
+        NamedSelector({ selector: CapSweeper.sweep.selector, name: "CapSweeper.sweep" }),
+        NamedSelector({ selector: CapSweeper.setSweepInterval.selector, name: "CapSweeper.setSweepInterval" }),
+        NamedSelector({ selector: CapSweeper.setMinSweepAmount.selector, name: "CapSweeper.setMinSweepAmount" }),
         NamedSelector({ selector: Lender.addAsset.selector, name: "Lender.addAsset" }),
         NamedSelector({ selector: Lender.removeAsset.selector, name: "Lender.removeAsset" }),
         NamedSelector({ selector: Lender.pauseAsset.selector, name: "Lender.pauseAsset" }),
@@ -142,6 +164,7 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
 
     function run() external {
         (,, infra) = _readInfraConfig();
+        (, symbioticAdapter) = _readSymbioticConfig();
         accessControl = AccessControl(infra.accessControl);
 
         namedContracts = [
@@ -150,10 +173,11 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
             NamedContract({ contractAddress: infra.oracle, name: "Oracle" }),
             NamedContract({ contractAddress: infra.accessControl, name: "Access Control" }),
             NamedContract({ contractAddress: infra.chainlinkPoRAddressList, name: "Chainlink PoR Address List" }),
+            NamedContract({ contractAddress: infra.gelatoHarvester, name: "Gelato Harvester" }),
+            NamedContract({ contractAddress: infra.gelatoSweeper, name: "Gelato Sweeper" }),
             NamedContract({ contractAddress: symbioticAdapter.network, name: "Network" }),
             NamedContract({ contractAddress: symbioticAdapter.networkMiddleware, name: "Network Middleware" }),
-            NamedContract({ contractAddress: symbioticAdapter.agentManager, name: "Agent Manager" }),
-            NamedContract({ contractAddress: symbioticAdapter.vaultFactory, name: "Vault Factory" })
+            NamedContract({ contractAddress: symbioticAdapter.agentManager, name: "Agent Manager" })
         ];
 
         string[1] memory capTokenSymbols = ["cUSD"];
@@ -167,6 +191,16 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
             console.log("Checking Access for", namedContracts[i].name, "Contract...");
             address contractAddress = namedContracts[i].contractAddress;
             checkAllRoles(contractAddress);
+            console.log("");
+        }
+
+        console.log("Checking Access for AccessControl Contract...");
+        // Check default admin role
+        bytes32 role = 0x0000000000000000000000000000000000000000000000000000000000000000;
+        uint256 memberCount = accessControl.getRoleMemberCount(role);
+        for (uint256 j = 0; j < memberCount; j++) {
+            address member = accessControl.getRoleMember(role, j);
+            console.log("Default Admin Role", labelledAddress(member));
             console.log("");
         }
         vm.stopBroadcast();
@@ -230,6 +264,20 @@ contract CheckAccess is Script, InfraConfigSerializer, VaultConfigSerializer, Sy
                 return unicode"🚨 Dev EOA 🚨";
             }
         }
+
+        if (msig == _address) {
+            return unicode"✅ Dev MSIG ✅";
+        }
+
+        if (gelato == _address) {
+            // unicode icecream emoji
+            return unicode"🍦 Gelato 🍦";
+        }
+
+        if (balancerVault == _address) {
+            return unicode"⚖️ Balancer ⚖️";
+        }
+
         return _address.toHexString();
     }
 }
