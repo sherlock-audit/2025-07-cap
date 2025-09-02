@@ -11,8 +11,10 @@ import { IERC20, SafeERC20 } from "@openzeppelin/contracts/token/ERC20/utils/Saf
 
 import { IBurnerRouter } from "@symbioticfi/burners/src/interfaces/router/IBurnerRouter.sol";
 
+import { ISymbioticNetwork } from "../../../interfaces/ISymbioticNetwork.sol";
 import { ISymbioticNetworkMiddleware } from "../../../interfaces/ISymbioticNetworkMiddleware.sol";
 import { SymbioticNetworkMiddlewareStorageUtils } from "../../../storage/SymbioticNetworkMiddlewareStorageUtils.sol";
+
 import { Subnetwork } from "@symbioticfi/core/src/contracts/libraries/Subnetwork.sol";
 import { IEntity } from "@symbioticfi/core/src/interfaces/common/IEntity.sol";
 import { IRegistry } from "@symbioticfi/core/src/interfaces/common/IRegistry.sol";
@@ -55,26 +57,24 @@ contract SymbioticNetworkMiddleware is
     }
 
     /// @inheritdoc ISymbioticNetworkMiddleware
-    function registerAgent(address _vault, address _agent) external checkAccess(this.registerAgent.selector) {
-        _verifyVault(_vault);
+    function registerVault(address _vault, address _stakerRewarder, address _agent)
+        external
+        checkAccess(this.registerVault.selector)
+    {
         SymbioticNetworkMiddlewareStorage storage $ = getSymbioticNetworkMiddlewareStorage();
-        if (_agent == address(0)) revert InvalidAgent();
         if ($.agentsToVault[_agent] != address(0)) revert ExistingCoverage();
-        if (!$.vaults[_vault].exists) revert VaultDoesNotExist();
-        $.agentsToVault[_agent] = _vault;
-        emit AgentRegistered(_agent);
-    }
+        if (_stakerRewarder == address(0) || _agent == address(0)) revert ZeroAddress();
 
-    /// @inheritdoc ISymbioticNetworkMiddleware
-    function registerVault(address _vault, address _stakerRewarder) external checkAccess(this.registerVault.selector) {
         _verifyVault(_vault);
-        SymbioticNetworkMiddlewareStorage storage $ = getSymbioticNetworkMiddlewareStorage();
         Vault storage vault = $.vaults[_vault];
         if (vault.exists) revert VaultExists();
-        if (_stakerRewarder == address(0)) revert NoStakerRewarder();
         vault.stakerRewarder = _stakerRewarder;
         vault.exists = true;
-        emit VaultRegistered(_vault);
+        $.agentsToVault[_agent] = _vault;
+
+        ISymbioticNetwork($.network).registerVault(_vault, _agent);
+
+        emit VaultRegistered(_vault, _agent);
     }
 
     /// @inheritdoc ISymbioticNetworkMiddleware
@@ -95,14 +95,19 @@ contract SymbioticNetworkMiddleware is
             slashableCollateralByVault($.network, _agent, address(vault), $.oracle, _timestamp);
 
         // Round up in favor of the liquidator
-        uint256 slashShareOfCollateral = (totalSlashableCollateral * _slashShare / 1e18) + 1;
+        uint256 slashShareOfCollateral =
+            _slashShare == 1e18 ? totalSlashableCollateral : (totalSlashableCollateral * _slashShare / 1e18) + 1;
 
         // If the slash share is greater than the total slashable collateral, set it to the total slashable collateral
         if (slashShareOfCollateral > totalSlashableCollateral) {
             slashShareOfCollateral = totalSlashableCollateral;
         }
 
-        ISlasher(vault.slasher()).slash(subnetwork(_agent), _agent, slashShareOfCollateral, _timestamp, new bytes(0));
+        address operator = ISymbioticNetwork($.network).getOperator(_agent);
+
+        ISlasher(vault.slasher()).slash(
+            subnetwork(operator), operator, slashShareOfCollateral, _timestamp, new bytes(0)
+        );
 
         IBurnerRouter(vault.burner()).triggerTransfer(address(this));
         IERC20(vault.collateral()).safeTransfer(_recipient, slashShareOfCollateral);
@@ -118,7 +123,7 @@ contract SymbioticNetworkMiddleware is
         address _vault = $.agentsToVault[_agent];
         address stakerRewarder = $.vaults[_vault].stakerRewarder;
 
-        IERC20(_token).forceApprove(address(IStakerRewards(stakerRewarder)), _amount);
+        IERC20(_token).forceApprove(stakerRewarder, _amount);
         IStakerRewards(stakerRewarder).distributeRewards(
             $.network, _token, _amount, abi.encode(uint48(block.timestamp - 1), $.feeAllowed, "", "")
         );
@@ -135,7 +140,9 @@ contract SymbioticNetworkMiddleware is
 
         if (address(burnerRouter) == address(0)) return (0, 0);
 
-        collateral = IBaseDelegator(IVault(_vault).delegator()).stakeAt(subnetwork(_agent), _agent, _timestamp, "");
+        address operator = ISymbioticNetwork(_network).getOperator(_agent);
+
+        collateral = IBaseDelegator(IVault(_vault).delegator()).stakeAt(subnetwork(operator), operator, _timestamp, "");
         collateralValue = collateral * collateralPrice / (10 ** decimals);
     }
 
@@ -153,7 +160,8 @@ contract SymbioticNetworkMiddleware is
         if (address(burnerRouter) == address(0)) return (0, 0);
 
         ISlasher slasher = ISlasher(IVault(_vault).slasher());
-        collateral = slasher.slashableStake(subnetwork(_agent), _agent, _timestamp, "");
+        address operator = ISymbioticNetwork(_network).getOperator(_agent);
+        collateral = slasher.slashableStake(subnetwork(operator), operator, _timestamp, "");
         collateralValue = collateral * collateralPrice / (10 ** decimals);
     }
 
@@ -161,7 +169,7 @@ contract SymbioticNetworkMiddleware is
     function coverage(address _agent) public view returns (uint256 delegation) {
         SymbioticNetworkMiddlewareStorage storage $ = getSymbioticNetworkMiddlewareStorage();
         address _vault = $.agentsToVault[_agent];
-        if (_vault == address(0)) revert InvalidAgent();
+        if (_vault == address(0)) revert ZeroAddress();
         address _network = $.network;
         address _oracle = $.oracle;
         uint48 _timestamp = uint48(block.timestamp);
@@ -184,14 +192,14 @@ contract SymbioticNetworkMiddleware is
     }
 
     /// @inheritdoc ISymbioticNetworkMiddleware
-    function subnetworkIdentifier(address _agent) public pure returns (uint96 id) {
-        bytes32 hash = keccak256(abi.encodePacked(_agent));
+    function subnetworkIdentifier(address _operator) public pure returns (uint96 id) {
+        bytes32 hash = keccak256(abi.encodePacked(_operator));
         id = uint96(uint256(hash)); // Takes first 96 bits of hash
     }
 
     /// @inheritdoc ISymbioticNetworkMiddleware
-    function subnetwork(address _agent) public view returns (bytes32 id) {
-        id = Subnetwork.subnetwork(getSymbioticNetworkMiddlewareStorage().network, subnetworkIdentifier(_agent));
+    function subnetwork(address _operator) public view returns (bytes32 id) {
+        id = Subnetwork.subnetwork(getSymbioticNetworkMiddlewareStorage().network, subnetworkIdentifier(_operator));
     }
 
     /// @inheritdoc ISymbioticNetworkMiddleware
@@ -214,13 +222,15 @@ contract SymbioticNetworkMiddleware is
     {
         burnerRouter = IBurnerRouter(IVault(_vault).burner());
 
+        address operator = ISymbioticNetwork(_network).getOperator(_agent);
+
         // Check pending receivers
         (address pendingReceiver,) = burnerRouter.pendingNetworkReceiver(_network);
         if (pendingReceiver != address(0) && pendingReceiver != address(this)) {
             return (IBurnerRouter(address(0)), 0, 0);
         }
 
-        (pendingReceiver,) = burnerRouter.pendingOperatorNetworkReceiver(_network, _agent);
+        (pendingReceiver,) = burnerRouter.pendingOperatorNetworkReceiver(_network, operator);
         if (pendingReceiver != address(0) && pendingReceiver != address(this)) {
             return (IBurnerRouter(address(0)), 0, 0);
         }
@@ -246,17 +256,19 @@ contract SymbioticNetworkMiddleware is
 
         address slasher = IVault(_vault).slasher();
         uint64 slasherType = IEntity(slasher).TYPE();
-        if (slasher == address(0)) revert NoSlasher();
         if (slasherType != uint64(ISymbioticNetworkMiddleware.SlasherType.INSTANT)) revert InvalidSlasher();
 
         address burner = IVault(_vault).burner();
         if (burner == address(0)) revert NoBurner();
         address receiver = IBurnerRouter(burner).networkReceiver($.network);
-        if (receiver != address(this)) revert InvalidBurnerRouter();
+        address globalReceiver = IBurnerRouter(burner).globalReceiver();
+        if (globalReceiver != address(this)) {
+            if (receiver != address(this)) revert InvalidBurnerRouter();
+        }
 
         address delegator = IVault(_vault).delegator();
         uint64 delegatorType = IEntity(delegator).TYPE();
-        if (delegatorType != uint64(ISymbioticNetworkMiddleware.DelegatorType.NETWORK_RESTAKE)) {
+        if (delegatorType != uint64(ISymbioticNetworkMiddleware.DelegatorType.OPERATOR_NETWORK_SPECIFIC)) {
             revert InvalidDelegator();
         }
     }

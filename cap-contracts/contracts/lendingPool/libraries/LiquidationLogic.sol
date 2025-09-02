@@ -22,8 +22,14 @@ library LiquidationLogic {
     /// @notice An agent has been liquidated
     event Liquidate(address indexed agent, address indexed liquidator, address asset, uint256 amount, uint256 value);
 
+    /// @notice No debt to liquidate
+    error NoDebt();
+
     /// @dev Zero address not valid
     error ZeroAddressNotValid();
+
+    /// @notice Insufficient liquidation value
+    error InsufficientLiquidationValue();
 
     /// @notice Open the liquidation window of an agent if unhealthy
     /// @param $ Lender storage
@@ -57,13 +63,16 @@ library LiquidationLogic {
     /// All health factors, LTV ratios, and thresholds are in ray (1e27)
     /// @param $ Lender storage
     /// @param params Parameters to liquidate an agent
+    /// @param _minLiquidatedValue Minimum value of the liquidation returned to the liquidator
     /// @return liquidatedValue Value of the liquidation returned to the liquidator
-    function liquidate(ILender.LenderStorage storage $, ILender.RepayParams memory params)
+    function liquidate(ILender.LenderStorage storage $, ILender.RepayParams memory params, uint256 _minLiquidatedValue)
         external
         returns (uint256 liquidatedValue)
     {
         (uint256 totalDelegation, uint256 totalSlashableCollateral, uint256 totalDebt,,, uint256 health) =
             ViewLogic.agent($, params.agent);
+
+        if (totalDebt == 0) revert NoDebt();
 
         ValidationLogic.validateLiquidation(
             health,
@@ -83,14 +92,15 @@ library LiquidationLogic {
             ILender.RepayParams({ agent: params.agent, asset: params.asset, amount: liquidated, caller: params.caller })
         );
 
-        (,,,,, health) = ViewLogic.agent($, params.agent);
-        if (health >= 1e27) _closeLiquidation($, params.agent);
-
         liquidatedValue =
             (liquidated + (liquidated * bonus / 1e27)) * assetPrice / (10 ** $.reservesData[params.asset].decimals);
         if (totalSlashableCollateral < liquidatedValue) liquidatedValue = totalSlashableCollateral;
+        if (liquidatedValue < _minLiquidatedValue) revert InsufficientLiquidationValue();
 
         if (liquidatedValue > 0) IDelegation($.delegation).slash(params.agent, params.caller, liquidatedValue);
+
+        (,,,,, health) = ViewLogic.agent($, params.agent);
+        if (health >= 1e27) _closeLiquidation($, params.agent);
 
         emit Liquidate(params.agent, params.caller, params.asset, liquidated, liquidatedValue);
     }
